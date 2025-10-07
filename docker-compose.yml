@@ -1,0 +1,77 @@
+# docker-compose.yml
+version: '3.9'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0.35
+    container_name: class_social_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword123}
+      MYSQL_DATABASE: class_social_db
+      MYSQL_USER: ${MYSQL_USER:-socialuser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-socialpass123}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - social_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Spring Boot Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: class_social_backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/class_social_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-socialuser}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-socialpass123}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this-in-production}
+      SERVER_PORT: 8080
+      UPLOAD_PATH: /app/uploads
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploads:/app/uploads
+    networks:
+      - social_network
+
+  # Angular Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: class_social_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - social_network
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf
+
+volumes:
+  mysql_data:
+    driver: local
+  uploads:
+    driver: local
+
+networks:
+  social_network:
+    driver: bridge
