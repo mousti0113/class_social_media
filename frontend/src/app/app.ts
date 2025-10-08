@@ -9,4 +9,14 @@ import { RouterOutlet } from '@angular/router';
 })
 export class App {
   protected readonly title = signal('frontend');
+isDarkMode = signal(false); // Segnale per tracciare lo stato
+
+  toggleDarkMode() {
+    this.isDarkMode.update(current => !current);
+    if (this.isDarkMode()) {
+      document.body.classList.add('dark');
+    } else {
+      document.body.classList.remove('dark');
+    }
+  }
 }
