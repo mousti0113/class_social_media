@@ -8,13 +8,13 @@ WORKDIR /app
 COPY package*.json ./
 
 # Installa dipendenze
-RUN npm ci --only=production
+RUN npm ci 
 
 # Copia il codice sorgente
 COPY . .
 
 # Build dell'applicazione Angular
-RUN npm run build -- --configuration=production
+RUN npm run build
 
 # Runtime stage con Nginx
 FROM nginx:alpine
@@ -23,7 +23,7 @@ FROM nginx:alpine
 RUN rm -rf /usr/share/nginx/html/*
 
 # Copia i file buildati da Angular
-COPY --from=build /app/dist/school-social-app /usr/share/nginx/html
+COPY  --from=build /app/dist/frontend/browser /usr/share/nginx/html
 
 # Copia configurazione nginx personalizzata
 COPY nginx.conf /etc/nginx/conf.d/default.conf
@@ -33,7 +33,7 @@ EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:80 || exit 1
+    CMD curl -f http://localhost:80 || exit 1
 
 # Avvia nginx
 CMD ["nginx", "-g", "daemon off;"]
