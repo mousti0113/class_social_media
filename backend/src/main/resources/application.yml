@@ -1,4 +1,7 @@
 spring:
+  output:
+    ansi:
+      enabled: always
   application:
     name: backend
   datasource:
@@ -14,3 +17,15 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
     show-sql: true
+  security:
+    user:
+      name:  ${SPRING_SECURITY_USER_NAME:admin}
+      password: ${SPRING_SECURITY_USER_PASSWORD:admin}
+jwt:
+  secret: ${JWT_SECRET:default-secret}
+  access-token-expiration: 1800000
+  refresh-token-expiration: 2592000000
+server:
+  port: 8080
+        
+
