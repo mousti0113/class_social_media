@@ -1,18 +1,56 @@
 package com.example.backend.configs;
 
-import org.springframework.beans.factory.annotation.Autowired;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
+import com.example.backend.models.User;
+import com.example.backend.repositories.UserRepository;
 
-@Component
-public class DataInitializer implements CommandLineRunner {
-
-    @Override
-    public void run(String... args) throws Exception {
-       
+@Configuration
+@RequiredArgsConstructor
+@Slf4j
+public class DataInitializer {
+    
+    
+    @Bean
+    CommandLineRunner initDatabase(UserRepository userRepository) {
+        return args -> {
+            // Crea admin se non esiste
+            if (!userRepository.existsByUsername("admin")) {
+                User admin = User.builder()
+                    .username("admin")
+                    .email("admin@classe.it")
+                    .passwordHash("admin123")
+                    .fullName("Amministratore")
+                    .isAdmin(true)
+                    .isActive(true)
+                    .build();
+                    
+                userRepository.save(admin);
+                log.info("Admin user created with username: admin");
+            }
+            
+            // Opzionale: crea alcuni utenti di test
+            if (userRepository.count() == 1) { // Solo admin esiste
+                for (int i = 1; i <= 3; i++) {
+                    User student = User.builder()
+                        .username("studente" + i)
+                        .email("studente" + i + "@classe.it")
+                        .passwordHash("password123")
+                        .fullName("Studente " + i)
+                        .isAdmin(false)
+                        .isActive(true)
+                        .build();
+                    
+                    userRepository.save(student);
+                }
+                log.info("Test students created");
+            }
+        };
     }
-
-   
 }
  
