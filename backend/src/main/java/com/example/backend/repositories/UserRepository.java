@@ -42,5 +42,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Ricerca utenti per username (autocomplete menzioni)
     @Query("SELECT u FROM User u WHERE LOWER(u.username) LIKE LOWER(CONCAT(:prefix, '%'))")
     List<User> findByUsernameStartingWith(@Param("prefix") String prefix);
+   // Metodo default per validare limite studenti
+    default void validateStudentLimit() {
+        long count = count(); // Conta tutti gli utenti
+        if (count >= 17) {
+            throw new IllegalStateException("Limite massimo di 17 studenti raggiunto");
+        }
+    }
 }
 
