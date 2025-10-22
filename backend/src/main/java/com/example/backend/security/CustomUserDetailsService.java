@@ -1,7 +1,11 @@
 package com.example.backend.security;
 
+import com.example.backend.exception.ResourceNotFoundException;
+import com.example.backend.exception.UnauthorizedException;
+import com.example.backend.models.User;
 import com.example.backend.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -17,29 +21,45 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
 
+    /**
+     * Carica un utente per username dal database
+     *
+     * @param username Username dell'utente
+     * @return UserDetails con informazioni utente e ruoli
+     * @throws UsernameNotFoundException se l'utente non viene trovato
+     * @throws UnauthorizedException se l'utente è disattivato
+     */
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        log.debug("Caricamento utente: {}", username);
+
         // Cerca l'utente per username
-        var user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException(
-                        "Utente non trovato con username: " + username
-                ));
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> {
+                    log.warn("Tentativo di accesso con username inesistente: {}", username);
+                    return new UsernameNotFoundException("Utente non trovato con username: " + username);
+                });
 
         // Verifica se l'utente è attivo
         if (!user.getIsActive()) {
-            throw new UsernameNotFoundException("Utente disattivato: " + username);
+            log.warn("Tentativo di accesso da utente disattivato: {} (ID: {})", username, user.getId());
+            throw new UnauthorizedException("Account disattivato. Contatta l'amministratore.");
         }
 
         // Crea la lista dei ruoli
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_STUDENT"));
-boolean isAdmin=user.getIsAdmin();
-        if (isAdmin) {
+
+        if (user.getIsAdmin()) {
             authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            log.debug("Utente {} caricato con ruolo ADMIN", username);
+        } else {
+            log.debug("Utente {} caricato con ruolo STUDENT", username);
         }
 
         // Restituisce un UserDetails con le informazioni dell'utente

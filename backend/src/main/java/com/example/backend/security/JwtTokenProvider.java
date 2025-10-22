@@ -3,6 +3,7 @@ package com.example.backend.security;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -35,8 +36,11 @@ public class JwtTokenProvider {
      * Genera un access token per l'utente
      */
     public String generateAccessToken(UserDetails userDetails) {
+        log.debug("Generazione access token per utente: {}", userDetails.getUsername());
+
         Map<String, Object> claims = new HashMap<>();
-        claims.put("type", "access");
+        claims.put("tipo", "access");
+
         return generateToken(claims, userDetails.getUsername(), accessTokenExpiration);
     }
 
@@ -44,8 +48,11 @@ public class JwtTokenProvider {
      * Genera un refresh token per l'utente
      */
     public String generateRefreshToken(UserDetails userDetails) {
+        log.debug("Generazione refresh token per utente: {}", userDetails.getUsername());
+
         Map<String, Object> claims = new HashMap<>();
-        claims.put("type", "refresh");
+        claims.put("tipo", "refresh");
+
         return generateToken(claims, userDetails.getUsername(), refreshTokenExpiration);
     }
 
@@ -108,16 +115,28 @@ public class JwtTokenProvider {
     public Boolean validateToken(String token, UserDetails userDetails) {
         try {
             final String username = extractUsername(token);
-            return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+            boolean isValid = username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+
+            if (isValid) {
+                log.debug("Token JWT valido per utente: {}", username);
+            } else {
+                log.warn("Token JWT non valido per utente: {}", username);
+            }
+
+            return isValid;
+
+        } catch (SignatureException e) {
+            log.error("Firma JWT non valida: {}", e.getMessage());
         } catch (MalformedJwtException e) {
             log.error("Token JWT malformato: {}", e.getMessage());
         } catch (ExpiredJwtException e) {
-            log.error("Token JWT scaduto: {}", e.getMessage());
+            log.warn("Token JWT scaduto: {}", e.getMessage());
         } catch (UnsupportedJwtException e) {
             log.error("Token JWT non supportato: {}", e.getMessage());
         } catch (IllegalArgumentException e) {
             log.error("JWT claims string è vuoto: {}", e.getMessage());
         }
+
         return false;
     }
 
@@ -136,7 +155,8 @@ public class JwtTokenProvider {
         try {
             extractAllClaims(token);
             return !isTokenExpired(token);
-        } catch (Exception exception) {
+        } catch (Exception e) {
+            log.debug("Token non valido: {}", e.getMessage());
             return false;
         }
     }

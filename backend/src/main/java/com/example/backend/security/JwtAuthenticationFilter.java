@@ -10,6 +10,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -46,10 +47,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Estrae il token (rimuove "Bearer ")
-        jwt = authHeader.substring(7);
-
         try {
+            // Estrae il token (rimuove "Bearer ")
+            jwt = authHeader.substring(7);
+
             // Estrae l'username dal token
             username = jwtTokenProvider.extractUsername(jwt);
 
@@ -60,8 +61,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
                 // Valida il token
-                boolean isTokenValid=jwtTokenProvider.validateToken(jwt, userDetails);
-                if (isTokenValid) {
+                if (jwtTokenProvider.validateToken(jwt, userDetails)) {
 
                     // Crea il token di autenticazione
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
@@ -76,11 +76,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     // Imposta l'autenticazione nel SecurityContext
                     SecurityContextHolder.getContext().setAuthentication(authToken);
 
-                    log.debug("Utente {} autenticato con successo", username);
+                    log.debug("Utente {} autenticato con successo per {} {}",
+                            username, request.getMethod(), request.getRequestURI());
+                } else {
+                    log.warn("Token JWT non valido per utente: {}", username);
                 }
             }
+        } catch (UsernameNotFoundException e) {
+            log.warn("Tentativo di autenticazione con utente inesistente: {}", e.getMessage());
         } catch (Exception e) {
-            log.error("Errore durante l'autenticazione JWT: {}", e.getMessage());
+            log.error("Errore durante l'autenticazione JWT: {} - Path: {}",
+                    e.getMessage(), request.getRequestURI());
         }
 
         // Passa la richiesta al prossimo filtro

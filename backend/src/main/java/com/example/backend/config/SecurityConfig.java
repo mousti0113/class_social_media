@@ -1,5 +1,7 @@
 package com.example.backend.config;
 
+import com.example.backend.security.CustomAccessDeniedHandler;
+import com.example.backend.security.CustomAuthenticationEntryPoint;
 import com.example.backend.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -30,12 +32,14 @@ import java.util.List;
  */
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // Abilita @PreAuthorize, @PostAuthorize, etc.
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
+    private final CustomAuthenticationEntryPoint authenticationEntryPoint;
+    private final CustomAccessDeniedHandler accessDeniedHandler;
 
     /**
      * Configura la security filter chain
@@ -43,7 +47,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Disabilita CSRF (non necessario per API REST stateless)
+                // Disabilita CSRF
                 .csrf(AbstractHttpConfigurer::disable)
 
                 // Configura CORS
@@ -51,42 +55,45 @@ public class SecurityConfig {
 
                 // Configura le regole di autorizzazione
                 .authorizeHttpRequests(auth -> auth
-                        // Endpoint pubblici (nessuna autenticazione richiesta)
+                        // Endpoint pubblici
                         .requestMatchers(
                                 "/api/auth/login",
-                                "/api/auth/registrazione",
+                                "/api/auth/register",
                                 "/api/auth/refresh-token",
                                 "/api/auth/reset-password",
-                                "/api/auth/conferma-reset-password"
+                                "/api/auth/confirm-reset-password"
                         ).permitAll()
 
-                        // WebSocket (pubblico per connessione, poi validato)
+                        // WebSocket
                         .requestMatchers("/ws/**").permitAll()
 
-                        // Endpoint admin (solo utenti con ruolo ADMIN)
+                        // Endpoint admin
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         // Tutti gli altri endpoint richiedono autenticazione
                         .anyRequest().authenticated()
                 )
 
-                // Gestione sessioni: STATELESS (nessuna sessione server-side)
+                // Gestione sessioni: STATELESS
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+
+                //  Gestori custom per errori di autenticazione e autorizzazione
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler)
                 )
 
                 // Configura l'authentication provider
                 .authenticationProvider(authenticationProvider())
 
-                // Aggiunge il filtro JWT prima del filtro di autenticazione standard
+                // Aggiunge il filtro JWT
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    /**
-     * Configura l'authentication provider con UserDetailsService e PasswordEncoder
-     */
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
@@ -94,42 +101,23 @@ public class SecurityConfig {
         return authProvider;
     }
 
-    /**
-     * Bean per l'AuthenticationManager
-     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
-    /**
-     * Password encoder con BCrypt
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * Configurazione CORS per consentire richieste dal frontend
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-
-        // Origini permesse (modifica con l'URL del tuo frontend Angular)
         configuration.setAllowedOrigins(List.of("http://localhost:4200"));
-
-        // Metodi HTTP permessi
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-
-        // Headers permessi
         configuration.setAllowedHeaders(List.of("*"));
-
-        // Permetti credenziali (cookies, authorization headers)
         configuration.setAllowCredentials(true);
-
-        // Tempo di cache per preflight requests
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

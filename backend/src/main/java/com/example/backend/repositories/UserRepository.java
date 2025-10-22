@@ -1,6 +1,7 @@
 package com.example.backend.repositories;
 
 
+import com.example.backend.exception.LimitExceededException;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -43,11 +44,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u WHERE LOWER(u.username) LIKE LOWER(CONCAT(:prefix, '%'))")
     List<User> findByUsernameStartingWith(@Param("prefix") String prefix);
    // Metodo default per validare limite studenti
-    default void validateStudentLimit() {
-        long count = count(); // Conta tutti gli utenti
-        if (count >= 17) {
-            throw new IllegalStateException("Limite massimo di 17 studenti raggiunto");
-        }
-    }
+   default void validateStudentLimit() {
+       long count = count();
+       if (count >= 17) {
+           throw new LimitExceededException("Limite massimo di 17 studenti raggiunto");
+       }
+   }
 }
 
