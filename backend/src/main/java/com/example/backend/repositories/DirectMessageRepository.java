@@ -14,7 +14,7 @@ import java.util.List;
 
 @Repository
 public interface DirectMessageRepository extends JpaRepository<DirectMessage, Long> {
-    
+
     // Conversazione tra due utenti
     @Query("""
         SELECT dm FROM DirectMessage dm
@@ -27,7 +27,7 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, Lo
         ORDER BY dm.createdAt ASC
         """)
     List<DirectMessage> findConversation(@Param("user1Id") Long user1Id, @Param("user2Id") Long user2Id);
-    
+
     // Messaggi non letti per un utente
     @Query("""
         SELECT dm FROM DirectMessage dm
@@ -38,7 +38,7 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, Lo
         ORDER BY dm.createdAt DESC
         """)
     List<DirectMessage> findUnreadMessages(@Param("userId") Long userId);
-    
+
     // Conta messaggi non letti
     @Query("""
         SELECT COUNT(dm) FROM DirectMessage dm
@@ -48,7 +48,23 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, Lo
         AND dm.isDeletedByReceiver = false
         """)
     long countUnreadMessages(@Param("userId") Long userId);
-    
+
+    /**
+     * Conta i messaggi non letti da un mittente specifico.
+     * Questa query è essenziale per mostrare il conteggio dei messaggi non letti
+     * per ogni conversazione nella lista delle chat.
+
+     */
+    @Query("""
+        SELECT COUNT(dm) FROM DirectMessage dm
+        WHERE dm.receiver.id = :receiverId
+        AND dm.sender.id = :senderId
+        AND dm.isRead = false
+        AND dm.isDeletedPermanently = false
+        AND dm.isDeletedByReceiver = false
+        """)
+    long countUnreadMessagesBySender(@Param("receiverId") Long receiverId, @Param("senderId") Long senderId);
+
     // Segna come letti
     @Modifying
     @Query("""
@@ -59,14 +75,21 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, Lo
         AND dm.isRead = false
         """)
     void markMessagesAsRead(@Param("receiverId") Long receiverId, @Param("senderId") Long senderId);
-    
-    // Ultime conversazioni
+
+    /**
+     * Trova l'ultimo messaggio scambiato con ogni persona con cui l'utente ha conversato.
+
+     */
     @Query("""
         SELECT dm FROM DirectMessage dm
         WHERE dm.id IN (
             SELECT MAX(dm2.id) FROM DirectMessage dm2
             WHERE (dm2.sender.id = :userId OR dm2.receiver.id = :userId)
             AND dm2.isDeletedPermanently = false
+            AND (
+                (dm2.sender.id = :userId AND dm2.isDeletedBySender = false)
+                OR (dm2.receiver.id = :userId AND dm2.isDeletedByReceiver = false)
+            )
             GROUP BY CASE 
                 WHEN dm2.sender.id = :userId THEN dm2.receiver.id 
                 ELSE dm2.sender.id 
@@ -75,4 +98,6 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, Lo
         ORDER BY dm.createdAt DESC
         """)
     Page<DirectMessage> findLatestConversations(@Param("userId") Long userId, Pageable pageable);
+
+
 }
