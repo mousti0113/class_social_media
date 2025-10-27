@@ -5,7 +5,7 @@ import com.example.backend.dtos.response.PostDettaglioResponseDTO;
 import com.example.backend.models.Post;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import java.util.stream.Collectors;
+
 
 @Component
 @RequiredArgsConstructor
@@ -44,7 +44,7 @@ public class PostMapper {
                 .commenti(post.getComments().stream()
                         .filter(c -> !c.getIsDeletedByAuthor() && !c.isHiddenForUser(currentUserId))
                         .map(commentMapper::toCommentoResponseDTO)
-                        .collect(Collectors.toList()))
+                        .toList())
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
                 .build();
