@@ -7,6 +7,7 @@ import com.example.backend.repositories.AdminAuditLogRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,8 +54,8 @@ public class AdminAuditService {
 
     /**
      * Versione semplificata senza target user
+     * Delega al metodo principale che gestisce la transazione
      */
-    @Transactional
     public void logAzioneAdmin(
             User admin,
             AzioneAdmin azione,
