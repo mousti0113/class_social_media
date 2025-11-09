@@ -37,6 +37,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final UserDetailsService userDetailsService;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
     private final CustomAccessDeniedHandler accessDeniedHandler;
@@ -61,7 +62,10 @@ public class SecurityConfig {
                                 "/api/auth/register",
                                 "/api/auth/refresh-token",
                                 "/api/auth/reset-password",
-                                "/api/auth/confirm-reset-password"
+                                "/api/auth/validate-reset-token",
+                                "/api/auth/confirm-reset-password",
+                                "/api/users/check/email",
+                                "/api/users/check/username"
                         ).permitAll()
 
                         // WebSocket
@@ -88,8 +92,11 @@ public class SecurityConfig {
                 // Configura l'authentication provider
                 .authenticationProvider(authenticationProvider())
 
-                // Aggiunge il filtro JWT
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                // Aggiunge i filtri in ordine:
+                // 1. Rate Limit Filter - applicato PRIMA per bloccare spam/abuse prima di processare
+                // 2. JWT Filter - autentica le richieste dopo che hanno passato il rate limiting
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(jwtAuthFilter, RateLimitFilter.class);
 
         return http.build();
     }
