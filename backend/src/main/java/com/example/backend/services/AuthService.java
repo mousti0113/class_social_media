@@ -5,6 +5,7 @@ import com.example.backend.dtos.request.RegistrazioneRequestDTO;
 import com.example.backend.dtos.request.RefreshTokenRequestDTO;
 import com.example.backend.dtos.response.LoginResponseDTO;
 import com.example.backend.dtos.response.RefreshTokenResponseDTO;
+import com.example.backend.events.WelcomeEmailEvent;
 import com.example.backend.exception.InvalidCredentialsException;
 import com.example.backend.exception.InvalidTokenException;
 import com.example.backend.exception.ResourceAlreadyExistsException;
@@ -16,6 +17,7 @@ import com.example.backend.repositories.UserRepository;
 import com.example.backend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -42,6 +44,7 @@ public class AuthService {
     private final UserDetailsService userDetailsService;
     private final RefreshTokenService refreshTokenService;
     private final UserMapper userMapper;
+    private final ApplicationEventPublisher eventPublisher;
     private static  final String AUTHORIZATION_TYPE="Bearer";
 
     /**
@@ -78,6 +81,10 @@ public class AuthService {
 
         user = userRepository.save(user);
         log.info("Utente registrato con successo: {} (ID: {})", user.getUsername(), user.getId());
+
+        // Pubblica evento per invio email di benvenuto asincrona
+        eventPublisher.publishEvent(new WelcomeEmailEvent(user.getEmail(), user.getUsername()));
+        log.debug("Evento WelcomeEmailEvent pubblicato per utente: {}", user.getUsername());
 
         // Genera token
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getUsername());
