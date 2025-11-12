@@ -98,6 +98,88 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, Lo
         ORDER BY dm.createdAt DESC
         """)
     Page<DirectMessage> findLatestConversations(@Param("userId") Long userId, Pageable pageable);
+    /**
+     * Trova tutti i messaggi inviati o ricevuti da un utente.
+     * Usato per eliminazione account.
+     */
+    @Query("""
+        SELECT dm FROM DirectMessage dm
+        WHERE dm.sender.id = :userId OR dm.receiver.id = :userId
+        """)
+    List<DirectMessage> findAllByUserId(@Param("userId") Long userId);
 
+    /**
+     * Cerca messaggi per contenuto (case-insensitive).
+     * Cerca solo nei messaggi visibili per l'utente.
+     */
+    @Query("""
+        SELECT dm FROM DirectMessage dm
+        WHERE (dm.sender.id = :userId OR dm.receiver.id = :userId)
+        AND dm.isDeletedPermanently = false
+        AND (
+            (dm.sender.id = :userId AND dm.isDeletedBySender = false)
+            OR (dm.receiver.id = :userId AND dm.isDeletedByReceiver = false)
+        )
+        AND LOWER(dm.content) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+        ORDER BY dm.createdAt DESC
+        """)
+    List<DirectMessage> searchMessagesByContent(@Param("userId") Long userId,
+                                                @Param("searchTerm") String searchTerm);
+
+    /**
+     * Conta il numero di conversazioni attive (con almeno un messaggio visibile).
+     */
+    @Query("""
+        SELECT COUNT(DISTINCT CASE 
+            WHEN dm.sender.id = :userId THEN dm.receiver.id 
+            ELSE dm.sender.id 
+        END)
+        FROM DirectMessage dm
+        WHERE (dm.sender.id = :userId OR dm.receiver.id = :userId)
+        AND dm.isDeletedPermanently = false
+        AND (
+            (dm.sender.id = :userId AND dm.isDeletedBySender = false)
+            OR (dm.receiver.id = :userId AND dm.isDeletedByReceiver = false)
+        )
+        """)
+    long countActiveConversations(@Param("userId") Long userId);
+
+    /**
+     * Trova tutti i messaggi di una conversazione senza filtri di eliminazione.
+     * Usato per operazioni batch di eliminazione.
+     */
+    @Query("""
+        SELECT dm FROM DirectMessage dm
+        WHERE (dm.sender.id = :user1Id AND dm.receiver.id = :user2Id)
+        OR (dm.sender.id = :user2Id AND dm.receiver.id = :user1Id)
+        ORDER BY dm.createdAt ASC
+        """)
+    List<DirectMessage> findAllConversationMessages(@Param("user1Id") Long user1Id,
+                                                    @Param("user2Id") Long user2Id);
+
+
+
+
+    /**
+     * Elimina permanentemente tutti i messaggi marcati come eliminati da entrambi.
+     * Job di pulizia periodica.
+     *
+     * @return Il numero di messaggi eliminati
+     */
+    @Modifying
+    @Query("DELETE FROM DirectMessage dm WHERE dm.isDeletedPermanently = true")
+    int deletePermanentlyDeletedMessages();
+
+    /**
+     * Trova messaggi vecchi per pulizia automatica.
+     * Messaggi più vecchi di X giorni e già letti.
+     */
+    @Query("""
+        SELECT dm FROM DirectMessage dm
+        WHERE dm.createdAt < :threshold
+        AND dm.isRead = true
+        AND dm.isDeletedPermanently = false
+        """)
+    List<DirectMessage> findOldReadMessages(@Param("threshold") java.time.LocalDateTime threshold);
 
 }
