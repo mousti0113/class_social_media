@@ -1,18 +1,15 @@
 package com.example.backend.controllers;
 
+import com.example.backend.config.CurrentUser;
 import com.example.backend.dtos.request.CreaCommentoRequestDTO;
 import com.example.backend.dtos.response.CommentResponseDTO;
-import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.models.User;
-import com.example.backend.repositories.UserRepository;
 import com.example.backend.services.CommentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,7 +31,6 @@ import java.util.List;
 public class CommentController {
 
     private final CommentService commentService;
-    private final UserRepository userRepository;
 
     /**
      * POST /api/posts/{postId}/comments
@@ -43,29 +39,25 @@ public class CommentController {
      * Questo endpoint gestisce sia i commenti principali che le risposte.
      * - Per creare un commento principale: non includere parentCommentId nel body
      * - Per creare una risposta: includi parentCommentId nel body
-    
+
      * Codici di stato:
      * - 201 CREATED: Commento creato con successo
      * - 400 BAD REQUEST: Dati non validi o violazione delle regole business
      * - 401 UNAUTHORIZED: Utente non autenticato
      * - 404 NOT FOUND: Post o commento padre non trovato
      *
-     * @param postId L'ID del post a cui commentare
+     * @param postId  L'ID del post a cui commentare
      * @param request DTO con contenuto e eventuale parentCommentId
-     * @param userDetails Dettagli dell'utente autenticato
+     * @param user    Utente autenticato (iniettato automaticamente)
      * @return CommentResponseDTO con i dati del commento appena creato
      */
     @PostMapping("/api/posts/{postId}/comments")
     public ResponseEntity<CommentResponseDTO> creaCommento(
             @PathVariable Long postId,
             @Valid @RequestBody CreaCommentoRequestDTO request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @CurrentUser User user) {
 
-        log.debug("POST /api/posts/{}/comments - Username: {}", postId, userDetails.getUsername());
-
-        // Recupera l'ID dell'utente autenticato
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Utente", "username", userDetails.getUsername()));
+        log.debug("POST /api/posts/{}/comments - Username: {}", postId, user.getUsername());
 
         // Delega la creazione al service
         CommentResponseDTO comment = commentService.creaCommento(postId, user.getId(), request);
@@ -84,26 +76,22 @@ public class CommentController {
      * - Ogni commento principale ha una lista "risposte" con le sue risposte
      * - Le risposte hanno il campo "parentCommentId" valorizzato
      *
-     * 
+     *
      * Codici di stato:
-     * - 200 OK: Commenti caricati con successo 
+     * - 200 OK: Commenti caricati con successo
      * - 401 UNAUTHORIZED: Utente non autenticato
      * - 404 NOT FOUND: Post non trovato
      *
      * @param postId L'ID del post
-     * @param userDetails Dettagli dell'utente autenticato
+     * @param user   Utente autenticato (iniettato automaticamente)
      * @return Lista di CommentResponseDTO con struttura gerarchica
      */
     @GetMapping("/api/posts/{postId}/comments")
     public ResponseEntity<List<CommentResponseDTO>> ottieniCommentiPost(
             @PathVariable Long postId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @CurrentUser User user) {
 
-        log.debug("GET /api/posts/{}/comments - Username: {}", postId, userDetails.getUsername());
-
-        // Recupera l'ID dell'utente
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Utente", "username", userDetails.getUsername()));
+        log.debug("GET /api/posts/{}/comments - Username: {}", postId, user.getUsername());
 
         // Ottiene i commenti
         List<CommentResponseDTO> comments = commentService.ottieniCommentiPost(postId, user.getId());
@@ -121,7 +109,7 @@ public class CommentController {
      * Il campo updatedAt viene aggiornato automaticamente, permettendo al frontend
      * di mostrare "Modificato" se updatedAt è diverso da createdAt.
      *
-     * 
+     *
      * Codici di stato:
      * - 200 OK: Commento modificato con successo
      * - 400 BAD REQUEST: Contenuto non valido (vuoto o troppo lungo)
@@ -130,24 +118,20 @@ public class CommentController {
      * - 404 NOT FOUND: Commento non trovato o cancellato
      *
      * @param commentId L'ID del commento da modificare
-     * @param request DTO con il nuovo contenuto
-     * @param userDetails Dettagli dell'utente autenticato
+     * @param request   DTO con il nuovo contenuto
+     * @param user      Utente autenticato (iniettato automaticamente)
      * @return CommentResponseDTO con i dati aggiornati
      */
     @PutMapping("/api/comments/{commentId}")
     public ResponseEntity<CommentResponseDTO> modificaCommento(
             @PathVariable Long commentId,
             @Valid @RequestBody CreaCommentoRequestDTO request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @CurrentUser User user) {
 
-        log.debug("PUT /api/comments/{} - Username: {}", commentId, userDetails.getUsername());
-
-        // Recupera l'ID dell'utente
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Utente", "username", userDetails.getUsername()));
+        log.debug("PUT /api/comments/{} - Username: {}", commentId, user.getUsername());
 
         // Modifica il commento
-       
+
         // Il campo parentCommentId viene ignorato durante la modifica.
         CommentResponseDTO comment = commentService.modificaCommento(
                 commentId,
@@ -170,7 +154,7 @@ public class CommentController {
      * - Il commento viene mostrato come "[Commento eliminato]" nel frontend
      * - La struttura della conversazione viene mantenuta
      *
-   
+
      * Codici di stato:
      * - 204 NO CONTENT: Commento eliminato con successo
      * - 401 UNAUTHORIZED: Utente non autenticato
@@ -178,24 +162,19 @@ public class CommentController {
      * - 404 NOT FOUND: Commento non trovato
      *
      * @param commentId L'ID del commento da eliminare
-     * @param userDetails Dettagli dell'utente autenticato
+     * @param user      Utente autenticato (iniettato automaticamente)
      * @return ResponseEntity vuoto con status 204
      */
     @DeleteMapping("/api/comments/{commentId}")
     public ResponseEntity<Void> eliminaCommento(
             @PathVariable Long commentId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @CurrentUser User user) {
 
-        log.debug("DELETE /api/comments/{} - Username: {}", commentId, userDetails.getUsername());
-
-        // Recupera l'ID dell'utente
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Utente", "username", userDetails.getUsername()));
+        log.debug("DELETE /api/comments/{} - Username: {}", commentId, user.getUsername());
 
         // Elimina il commento
         commentService.eliminaCommento(commentId, user.getId());
 
-        // 204 NO CONTENT è lo status corretto per una DELETE riuscita
         return ResponseEntity.noContent().build();
     }
 
@@ -203,27 +182,23 @@ public class CommentController {
      * POST /api/comments/{commentId}/hide
      * Nasconde un commento.
      *
-    
+
      * Codici di stato:
      * - 200 OK: Commento nascosto con successo
      * - 401 UNAUTHORIZED: Utente non autenticato
      * - 404 NOT FOUND: Commento non trovato
      *
-   
+
      * @param commentId L'ID del commento da nascondere
-     * @param userDetails Dettagli dell'utente autenticato
+     * @param user      Utente autenticato (iniettato automaticamente)
      * @return ResponseEntity vuoto con status 200
      */
     @PostMapping("/api/comments/{commentId}/hide")
     public ResponseEntity<Void> nascondiCommento(
             @PathVariable Long commentId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @CurrentUser User user) {
 
-        log.debug("POST /api/comments/{}/hide - Username: {}", commentId, userDetails.getUsername());
-
-        // Recupera l'ID dell'utente
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Utente", "username", userDetails.getUsername()));
+        log.debug("POST /api/comments/{}/hide - Username: {}", commentId, user.getUsername());
 
         // Nasconde il commento
         commentService.nascondiCommento(commentId, user.getId());
@@ -234,21 +209,17 @@ public class CommentController {
     /**
      * DELETE /api/comments/{commentId}/hide
      * Mostra un commento precedentemente nascosto.
-     
+
      * @param commentId L'ID del commento da mostrare
-     * @param userDetails Dettagli dell'utente autenticato
+     * @param user      Utente autenticato (iniettato automaticamente)
      * @return ResponseEntity vuoto con status 200
      */
     @DeleteMapping("/api/comments/{commentId}/hide")
     public ResponseEntity<Void> mostraCommento(
             @PathVariable Long commentId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @CurrentUser User user) {
 
-        log.debug("DELETE /api/comments/{}/hide - Username: {}", commentId, userDetails.getUsername());
-
-        // Recupera l'ID dell'utente
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Utente", "username", userDetails.getUsername()));
+        log.debug("DELETE /api/comments/{}/hide - Username: {}", commentId, user.getUsername());
 
         // Mostra il commento
         commentService.mostraCommento(commentId, user.getId());

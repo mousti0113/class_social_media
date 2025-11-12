@@ -2,12 +2,15 @@ package com.example.backend.services;
 
 import com.example.backend.dtos.request.CreaCommentoRequestDTO;
 import com.example.backend.dtos.response.CommentResponseDTO;
+import com.example.backend.events.DeleteMentionsEvent;
+import com.example.backend.events.MentionsToProcessEvent;
 import com.example.backend.exception.InvalidInputException;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.exception.UnauthorizedException;
 import com.example.backend.mappers.CommentMapper;
 import com.example.backend.models.Comment;
 import com.example.backend.models.HiddenComment;
+import com.example.backend.models.MentionableType;
 import com.example.backend.models.Post;
 import com.example.backend.models.User;
 import com.example.backend.repositories.CommentRepository;
@@ -16,6 +19,7 @@ import com.example.backend.repositories.PostRepository;
 import com.example.backend.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,12 +46,13 @@ public class CommentService {
     private final UserRepository userRepository;
     private final HiddenCommentRepository hiddenCommentRepository;
     private final CommentMapper commentMapper;
-
+    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private static final String ENTITY_COMMENT = "Commento";
     private static final String ENTITY_POST = "Post";
     private static final String ENTITY_USER = "Utente";
     private static final String FIELD_ID = "id";
-    private static final int MAX_COMMENT_DEPTH = 2;
+ 
 
     /**
      * Crea un nuovo commento o risposta a un post.
@@ -75,29 +80,23 @@ public class CommentService {
     public CommentResponseDTO creaCommento(Long postId, Long userId, CreaCommentoRequestDTO request) {
         log.info("Creazione commento per post ID: {} da utente ID: {}", postId, userId);
 
-        // Carica il post
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException(ENTITY_POST, FIELD_ID, postId));
 
-        // Verifica che il post non sia cancellato
-        if (post.getIsDeletedByAuthor()) {
+        if (post.getIsDeletedByAuthor().booleanValue()) {
             log.warn("Tentativo di commentare post cancellato - Post ID: {}", postId);
             throw new ResourceNotFoundException(ENTITY_POST, FIELD_ID, postId);
         }
 
-        // Carica l'utente
         User autore = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(ENTITY_USER, FIELD_ID, userId));
 
-        // Gestisce il commento padre se presente (per le risposte)
         Comment parentComment = null;
         if (request.getParentCommentId() != null) {
             parentComment = commentRepository.findById(request.getParentCommentId())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             ENTITY_COMMENT, FIELD_ID, request.getParentCommentId()));
 
-            // Verifica che il commento padre appartenga allo stesso post
-           
             if (!parentComment.getPost().getId().equals(postId)) {
                 log.warn("Tentativo di rispondere a commento di post diverso - Commento ID: {}, Post ID: {}",
                         request.getParentCommentId(), postId);
@@ -105,8 +104,6 @@ public class CommentService {
                         "Il commento a cui stai rispondendo non appartiene a questo post");
             }
 
-            // Verifica che il commento padre non sia già una risposta
-            
             if (parentComment.getParentComment() != null) {
                 log.warn("Tentativo di rispondere a una risposta - Commento ID: {}",
                         request.getParentCommentId());
@@ -114,15 +111,13 @@ public class CommentService {
                         "Non è possibile rispondere a una risposta. Puoi rispondere solo ai commenti principali.");
             }
 
-            // Verifica che il commento padre non sia cancellato
-            if (parentComment.getIsDeletedByAuthor()) {
+            if (parentComment.getIsDeletedByAuthor().booleanValue()) {
                 log.warn("Tentativo di rispondere a commento cancellato - Commento ID: {}",
                         request.getParentCommentId());
                 throw new ResourceNotFoundException(ENTITY_COMMENT, FIELD_ID, request.getParentCommentId());
             }
         }
 
-        // Crea l'entità Comment
         Comment comment = Comment.builder()
                 .post(post)
                 .user(autore)
@@ -131,17 +126,55 @@ public class CommentService {
                 .isDeletedByAuthor(false)
                 .build();
 
-        // Salva il commento
         comment = commentRepository.save(comment);
 
-        // Aggiorna il contatore dei commenti nel post
-        // Incrementa di 1 il contatore
+        // Aggiorna contatore
         postRepository.updateCommentsCount(postId, 1);
+
+        // Crea notifiche
+        if (parentComment == null) {
+            // Commento principale - notifica autore post
+            notificationService.creaNotificaCommento(
+                    post.getUser().getId(),
+                    userId,
+                    postId,
+                    comment.getId()
+            );
+        } else {
+            // Risposta - notifica autore commento padre
+            notificationService.creaNotificaRisposta(
+                    parentComment.getUser().getId(),
+                    userId,
+                    postId,
+                    comment.getId()
+            );
+
+            // Notifica anche autore post se è diverso da autore commento padre
+            if (!parentComment.getUser().getId().equals(post.getUser().getId())) {
+                notificationService.creaNotificaCommento(
+                        post.getUser().getId(),
+                        userId,
+                        postId,
+                        comment.getId()
+                );
+            }
+        }
+
+        // Pubblica evento per processing menzioni asincrono
+        if (request.getContenuto() != null && !request.getContenuto().isBlank()) {
+            eventPublisher.publishEvent(new MentionsToProcessEvent(
+                    MentionableType.COMMENT,
+                    comment.getId(),
+                    request.getContenuto(),
+                    userId,
+                    false // non è un update
+            ));
+            log.debug("Evento MentionsToProcessEvent pubblicato per commento ID: {}", comment.getId());
+        }
 
         log.info("Commento creato con successo - ID: {} per post ID: {} da utente: {}",
                 comment.getId(), postId, autore.getUsername());
 
-        // Converti in DTO e restituisci
         return commentMapper.toCommentoResponseDTO(comment);
     }
 
@@ -178,7 +211,7 @@ public class CommentService {
         }
 
         // Verifica che il commento non sia cancellato
-        if (comment.getIsDeletedByAuthor()) {
+        if (comment.getIsDeletedByAuthor().booleanValue()) {
             log.warn("Tentativo di modificare commento cancellato - Commento ID: {}", commentId);
             throw new ResourceNotFoundException(ENTITY_COMMENT, FIELD_ID, commentId);
         }
@@ -191,8 +224,18 @@ public class CommentService {
         // Aggiorna il contenuto
         comment.setContent(nuovoContenuto);
 
-        // Salva 
+        // Salva
         comment = commentRepository.save(comment);
+
+        // Pubblica evento per aggiornamento menzioni asincrono
+        eventPublisher.publishEvent(new MentionsToProcessEvent(
+                MentionableType.COMMENT,
+                commentId,
+                nuovoContenuto,
+                userId,
+                true // è un update
+        ));
+        log.debug("Evento MentionsToProcessEvent (update) pubblicato per commento ID: {}", commentId);
 
         log.info("Commento modificato con successo - ID: {}", commentId);
 
@@ -241,6 +284,10 @@ public class CommentService {
         // Decrementa il contatore dei commenti nel post
         postRepository.updateCommentsCount(comment.getPost().getId(), -1);
 
+        // Pubblica evento per eliminazione menzioni asincrona
+        eventPublisher.publishEvent(new DeleteMentionsEvent(MentionableType.COMMENT, commentId));
+        log.debug("Evento DeleteMentionsEvent pubblicato per commento ID: {}", commentId);
+
         log.info("Commento eliminato con successo (soft delete) - ID: {}", commentId);
     }
 
@@ -250,17 +297,15 @@ public class CommentService {
      * Questo metodo restituisce i commenti principali, e ogni commento include
      * le sue risposte nella proprietà "risposte" del DTO.
      *
-     * La query nel repository filtra automaticamente:
-     * - Commenti cancellati (isDeletedByAuthor = true)
-     * - Commenti nascosti dall'utente corrente
-     *
-     * La struttura gerarchica viene costruita dal CommentMapper che ricorsivamente
-     * mappa i childComments.
-     *
-     *
+     * OTTIMIZZAZIONE N+1:
+     * Questo metodo usa una strategia a query batch per evitare il problema N+1:
+     * 1. Carica tutti i root comments con i loro user (JOIN FETCH)
+     * 2. Carica gli ID dei commenti nascosti dall'utente in una singola query
+     * 3. Carica tutte le risposte in batch con i loro user (JOIN FETCH)
+     * Questo riduce drasticamente il numero di query da O(N+M) a solo 3 query fisse.
      *
      * @param postId L'ID del post
-     * @param userId L'ID dell'utente che sta visualizzando 
+     * @param userId L'ID dell'utente che sta visualizzando
      * @return Lista di CommentResponseDTO con struttura gerarchica
      * @throws ResourceNotFoundException se il post non esiste
      */
@@ -273,20 +318,50 @@ public class CommentService {
             throw new ResourceNotFoundException(ENTITY_POST, FIELD_ID, postId);
         }
 
-        // Carica solo i commenti principali 
-        // Le risposte verranno caricate dal mapper tramite la relazione childComments
+        // 1. Carica i commenti root con i loro user (JOIN FETCH nel repository)
         List<Comment> rootComments = commentRepository.findRootCommentsByPostId(postId);
 
-        // Filtra manualmente i commenti nascosti dall'utente
-       
-        List<Comment> visibleRootComments = rootComments.stream()
-                .filter(comment -> !comment.isHiddenForUser(userId))
-                .collect(Collectors.toList());
+        if (rootComments.isEmpty()) {
+            log.debug("Nessun commento trovato per post ID: {}", postId);
+            return List.of();
+        }
 
-        log.debug("Trovati {} commenti principali per post ID: {}", visibleRootComments.size(), postId);
+        // 2. Carica gli ID dei commenti nascosti dall'utente (evita N+1)
+        var hiddenCommentIds = hiddenCommentRepository.findHiddenCommentIdsByUserId(userId);
+
+        // Filtra i commenti nascosti dall'utente
+        List<Comment> visibleRootComments = rootComments.stream()
+                .filter(comment -> !hiddenCommentIds.contains(comment.getId()))
+                .toList();
+
+        if (visibleRootComments.isEmpty()) {
+            log.debug("Nessun commento visibile per post ID: {} (tutti nascosti)", postId);
+            return List.of();
+        }
+
+        // 3. Carica tutte le risposte in batch con i loro user (evita N+1)
+        List<Long> rootCommentIds = visibleRootComments.stream()
+                .map(Comment::getId)
+                .toList();
+
+        List<Comment> allChildComments = commentRepository.findChildCommentsByParentIds(rootCommentIds);
+
+        // 4. Popola manualmente i childComments nei root comments
+        // Raggruppa le risposte per parentComment ID
+        var childCommentsByParentId = allChildComments.stream()
+                .collect(Collectors.groupingBy(c -> c.getParentComment().getId()));
+
+        // Associa le risposte ai commenti parent
+        visibleRootComments.forEach(rootComment -> {
+            List<Comment> children = childCommentsByParentId.getOrDefault(rootComment.getId(), List.of());
+            rootComment.getChildComments().clear();
+            rootComment.getChildComments().addAll(children);
+        });
+
+        log.debug("Trovati {} commenti principali con {} risposte totali per post ID: {}",
+                visibleRootComments.size(), allChildComments.size(), postId);
 
         // Converte in DTO con struttura gerarchica
-        // Il mapper gestisce ricorsivamente le risposte
         return visibleRootComments.stream()
                 .map(commentMapper::toCommentoResponseDTO)
                 .toList();
@@ -358,5 +433,51 @@ public class CommentService {
     @Transactional(readOnly = true)
     public long contaCommentiUtente(Long userId) {
         return commentRepository.countByUserId(userId);
+    }
+
+    /**
+     * Ricalcola il contatore dei commenti di un post.
+     *
+     * THREAD-SAFETY:
+     * Usa una query atomica che conta e aggiorna in un'unica operazione.
+     * Questo elimina completamente la race condition del pattern read-modify-write.
+     *
+     * Utile per correggere eventuali disallineamenti tra il campo commentsCount
+     * del post e il numero reale di commenti non cancellati.
+     *
+     * Può essere chiamato da:
+     * - Job di manutenzione schedulati
+     * - Admin panel per correzione dati
+     * - Recovery dopo errori
+     *
+     * @param postId L'ID del post
+     * @return Il nuovo valore del contatore
+     */
+    @Transactional
+    public int ricalcolaContatoreCommenti(Long postId) {
+        log.info("Ricalcolo contatore commenti per post ID: {}", postId);
+
+        // Verifica che il post esista
+        if (!postRepository.existsById(postId)) {
+            throw new ResourceNotFoundException(ENTITY_POST, FIELD_ID, postId);
+        }
+
+        // Legge il valore vecchio solo per logging
+        Post post = postRepository.findById(postId).orElseThrow();
+        int oldCount = post.getCommentsCount();
+
+        // Sincronizza atomicamente il contatore con la count reale
+        // Questa query è thread-safe: UPDATE ... SET count = (SELECT COUNT(...))
+        postRepository.syncCommentsCount(postId);
+
+        // Rilegge per ottenere il nuovo valore
+        long countReale = commentRepository.countByPostIdAndIsDeletedByAuthorFalse(postId);
+
+        if (countReale != oldCount) {
+            log.warn("Contatore commenti disallineato per post ID: {} - Vecchio: {}, Nuovo: {}",
+                    postId, oldCount, countReale);
+        }
+
+        return (int) countReale;
     }
 }

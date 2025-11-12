@@ -25,15 +25,26 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
         """)
     List<Comment> findVisibleCommentsForPost(@Param("postId") Long postId, @Param("userId") Long userId);
 
-    // Commenti principali
+    // Commenti principali con user eager-loaded (evita N+1)
     @Query("""
         SELECT c FROM Comment c
+        JOIN FETCH c.user
         WHERE c.post.id = :postId
         AND c.parentComment IS NULL
         AND c.isDeletedByAuthor = false
         ORDER BY c.createdAt ASC
         """)
     List<Comment> findRootCommentsByPostId(@Param("postId") Long postId);
+
+    // Carica tutte le risposte per una lista di commenti parent con user eager-loaded (evita N+1)
+    @Query("""
+        SELECT c FROM Comment c
+        JOIN FETCH c.user
+        WHERE c.parentComment.id IN :parentIds
+        AND c.isDeletedByAuthor = false
+        ORDER BY c.createdAt ASC
+        """)
+    List<Comment> findChildCommentsByParentIds(@Param("parentIds") List<Long> parentIds);
 
     // Risposte a un commento
     List<Comment> findByParentCommentIdAndIsDeletedByAuthorFalseOrderByCreatedAtAsc(Long parentCommentId);
@@ -48,5 +59,8 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
      */
     @Query("SELECT COUNT(c) FROM Comment c WHERE c.user.id = :userId AND c.isDeletedByAuthor = false")
     long countByUserId(@Param("userId") Long userId);
-
+    /**
+     * Trova tutti i commenti di un utente (per eliminazione account).
+     */
+    List<Comment> findByUserId(Long userId);
 }
