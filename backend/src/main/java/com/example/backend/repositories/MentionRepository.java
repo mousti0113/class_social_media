@@ -1,5 +1,6 @@
 package com.example.backend.repositories;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -31,8 +32,16 @@ public interface MentionRepository extends JpaRepository<Mention, Long> {
         WHERE m.mentionedUser.id = :userId
         ORDER BY m.createdAt DESC
         """)
+List<Mention> findRecentMentionsWithUsers(Long userId, Pageable pageable);   
+//Tutte le menzioni (senza limite)
+@Query("""
+        SELECT m FROM Mention m
+        JOIN FETCH m.mentionedUser
+        JOIN FETCH m.mentioningUser
+        WHERE m.mentionedUser.id = :userId
+        ORDER BY m.createdAt DESC
+        """)
     List<Mention> findRecentMentionsWithUsers(@Param("userId") Long userId);
-    
     // Elimina menzioni quando il contenuto viene cancellato
     void deleteByMentionableTypeAndMentionableId(MentionableType type, Long id);
 }

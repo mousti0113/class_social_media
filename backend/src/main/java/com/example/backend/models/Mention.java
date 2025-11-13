@@ -39,7 +39,7 @@ public class Mention extends BaseEntity {
         return switch (mentionableType) {
             case POST -> em.find(Post.class, mentionableId).getContent();
             case COMMENT -> em.find(Comment.class, mentionableId).getContent();
-            case MESSAGE -> em.find(DirectMessage.class, mentionableId).getContent();
+
         };
     }
 }
