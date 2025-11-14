@@ -32,6 +32,8 @@ public class User extends BaseEntity {
     
     @Column(name = "full_name", length = 100, nullable = false)
     private String fullName;
+    @Column(name = "user_bio", length = 100, nullable = true)
+    private String bio;
     
     @Column(name = "profile_picture_url", length = 500)
     private String profilePictureUrl;
@@ -77,9 +79,5 @@ public class User extends BaseEntity {
     @Builder.Default
     private Set<UserSession> sessions = new HashSet<>();
 
-    //Helper method
-    @Transient
-    public boolean isAdmin() {
-        return this.isAdmin;
-    }
+   
 }

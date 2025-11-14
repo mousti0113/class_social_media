@@ -17,6 +17,7 @@ public class UserMapper {
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .nomeCompleto(user.getFullName())
+                .bio(user.getBio())
                 .profilePictureUrl(user.getProfilePictureUrl())
                 .isAdmin(user.getIsAdmin())
                 .isActive(user.getIsActive())
@@ -37,10 +38,26 @@ public class UserMapper {
                 .build();
     }
 
+    /**
+     * Determina se un utente è online in base all'ultimo accesso.
+     * <p>
+     * Un utente è considerato online se il suo lastSeen è negli ultimi 5 minuti.
+     * <p>
+     * PERFORMANCE: Usa il campo lastSeen già presente nell'entità User invece
+     * di caricare lazy la collezione sessions. Questo evita N+1 query quando
+     * si mappano liste di utenti.
+     * <p>
+ 
+     *
+     * @param user L'utente da verificare
+     * @return true se online, false altrimenti
+     */
     private Boolean isUserOnline(User user) {
+        if (user.getLastSeen() == null) {
+            return false;
+        }
+
         LocalDateTime threshold = LocalDateTime.now().minusMinutes(5);
-        return user.getSessions().stream()
-                .anyMatch(session -> session.getIsOnline() &&
-                        session.getLastActivity().isAfter(threshold));
+        return user.getLastSeen().isAfter(threshold);
     }
 }

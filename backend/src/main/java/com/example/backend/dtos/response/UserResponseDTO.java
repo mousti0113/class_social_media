@@ -15,6 +15,7 @@ public class UserResponseDTO {
     private String username;
     private String email;
     private String nomeCompleto;
+    private String bio;
     private String profilePictureUrl;
     private Boolean isAdmin;
     private Boolean isActive;
