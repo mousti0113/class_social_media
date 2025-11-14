@@ -21,11 +21,29 @@ spring:
     user:
       name:  ${SPRING_SECURITY_USER_NAME:admin}
       password: ${SPRING_SECURITY_USER_PASSWORD:admin}
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+        mail:
+          smtp:
+            auth: true
+            starttls:
+              enable: true
+              required: true
+            ssl:
+              trust: "*"
+            connectiontimeout: 5000
+            timeout: 5000
+            writetimeout: 5000
 jwt:
   secret: ${JWT_SECRET:default-secret}
   access-token-expiration: 1800000
   refresh-token-expiration: 2592000000
 server:
   port: 8080
+
         
 
