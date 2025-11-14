@@ -34,3 +34,4 @@ build/
 
 ### environment files ###
 .env
+readme.md
