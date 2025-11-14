@@ -21,18 +21,18 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
     @Query("""
         SELECT prt FROM PasswordResetToken prt
         WHERE prt.token = :token 
-        AND prt.used = false 
+        AND prt.isUsed = false 
         AND prt.expiresAt > :now
         """)
     Optional<PasswordResetToken> findValidToken(@Param("token") String token, @Param("now") LocalDateTime now);
     
     // Invalida vecchi token di un utente
     @Modifying
-    @Query("UPDATE PasswordResetToken prt SET prt.used = true WHERE prt.user.id = :userId AND prt.used = false")
+    @Query("UPDATE PasswordResetToken prt SET prt.isUsed = true WHERE prt.user.id = :userId AND prt.isUsed = false")
     void invalidateUserTokens(@Param("userId") Long userId);
     
     // Elimina token scaduti o usati
     @Modifying
-    @Query("DELETE FROM PasswordResetToken prt WHERE prt.expiresAt < :now OR prt.used = true")
+    @Query("DELETE FROM PasswordResetToken prt WHERE prt.expiresAt < :now OR prt.isUsed = true")
     void deleteExpiredOrUsedTokens(@Param("now") LocalDateTime now);
 }

@@ -34,7 +34,7 @@ public class PasswordResetToken {
     
     @Column(nullable = false)
     @Builder.Default
-    private Boolean used = false;
+    private Boolean isUsed = false;
     
     @Column(name = "created_at", nullable = false)
     @Builder.Default
@@ -42,7 +42,7 @@ public class PasswordResetToken {
     
     @Transient
     public boolean isValid() {
-        return !used && LocalDateTime.now().isBefore(expiresAt);
+        return !isUsed && LocalDateTime.now().isBefore(expiresAt);
     }
 }
 
