@@ -50,7 +50,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     /**
      * Carica notifiche con tutti i dettagli (post, commento, messaggio correlati).
-     * Questa è una versione "pesante" che carica tutte le entità correlate.
 
      */
     @Query("""
@@ -73,10 +72,10 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("UPDATE Notification n SET n.isRead = true WHERE n.id = :notificationId AND n.user.id = :userId")
     void markAsRead(@Param("notificationId") Long notificationId, @Param("userId") Long userId);
 
-    // Elimina vecchie notifiche
+    // Elimina vecchie notifiche e restituisce il numero di notifiche eliminate
     @Modifying
     @Query("DELETE FROM Notification n WHERE n.createdAt < :threshold")
-    void deleteOldNotifications(@Param("threshold") LocalDateTime threshold);
+    int deleteOldNotifications(@Param("threshold") LocalDateTime threshold);
 
     /**
      * Trova notifiche duplicate per evitare di creare notifiche ridondanti.
@@ -103,4 +102,15 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             @Param("contentType") String contentType,
             @Param("since") LocalDateTime since
     );
+
+    /**
+     * Trova tutte le notifiche di un utente (per eliminazione account).
+     */
+    List<Notification> findByUserId(Long userId);
+
+    /**
+     * Elimina tutte le notifiche di un utente.
+     */
+    @Modifying
+    void deleteByUserId(Long userId);
 }
