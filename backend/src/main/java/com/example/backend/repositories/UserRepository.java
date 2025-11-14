@@ -45,9 +45,24 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * Ricerca utenti per username (autocomplete menzioni).
      * Cerca solo utenti il cui username inizia con il prefisso fornito.
      * Utile per l'autocomplete quando si digita @ seguito da lettere.
+     * <p>
+     * PERFORMANCE: Usa Pageable per limitare i risultati direttamente nel DB
+     * invece di caricare tutti gli utenti e limitare in Java.
+     *
+     * @param prefix Il prefisso da cercare
+     * @param pageable Parametri di paginazione (usa PageRequest.of(0, 10) per primi 10)
+     * @return Lista di utenti che matchano il prefisso
      */
-    @Query("SELECT u FROM User u WHERE LOWER(u.username) LIKE LOWER(CONCAT(:prefix, '%'))")
-    List<User> findByUsernameStartingWith(@Param("prefix") String prefix);
+    @Query("SELECT u FROM User u WHERE u.isActive = true AND LOWER(u.username) LIKE LOWER(CONCAT(:prefix, '%')) ORDER BY u.username")
+    List<User> findByUsernameStartingWith(@Param("prefix") String prefix, Pageable pageable);
+
+    /**
+     * Trova utenti per una lista di username.
+     * Utile per processare le menzioni: dato un set di @username,
+     * recupera tutti gli User corrispondenti.
+     */
+    @Query("SELECT u FROM User u WHERE LOWER(u.username) IN :usernames AND u.isActive = true")
+    List<User> findByUsernameIn(@Param("usernames") java.util.Set<String> usernames);
 
     /**
      * Ricerca avanzata di utenti per username o nome completo.

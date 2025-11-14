@@ -38,7 +38,7 @@ public class DataInitializer {
             
             // Opzionale: crea alcuni utenti di test
             if (userRepository.count() == 1) { // Solo admin esiste
-                for (int i = 1; i <= 15; i++) {
+                for (int i = 1; i <= 4; i++) {
                     User student = User.builder()
                         .username("studente" + i)
                         .email("studente" + i + "@classe.it")

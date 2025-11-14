@@ -1,6 +1,5 @@
 package com.example.backend.security;
 
-import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.exception.UnauthorizedException;
 import com.example.backend.models.User;
 import com.example.backend.repositories.UserRepository;

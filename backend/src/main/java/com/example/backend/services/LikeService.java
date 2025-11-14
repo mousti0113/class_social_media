@@ -1,7 +1,6 @@
 package com.example.backend.services;
 
 import com.example.backend.dtos.response.UserSummaryDTO;
-import com.example.backend.exception.InvalidInputException;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.mappers.UserMapper;
 import com.example.backend.models.Like;
