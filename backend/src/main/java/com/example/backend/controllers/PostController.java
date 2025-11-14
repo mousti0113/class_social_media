@@ -1,12 +1,11 @@
 package com.example.backend.controllers;
 
+import com.example.backend.config.CurrentUser;
 import com.example.backend.dtos.request.CreaPostRequestDTO;
 import com.example.backend.dtos.request.ModificaPostRequestDTO;
 import com.example.backend.dtos.response.PostDettaglioResponseDTO;
 import com.example.backend.dtos.response.PostResponseDTO;
-import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.models.User;
-import com.example.backend.repositories.UserRepository;
 import com.example.backend.services.PostService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,21 +16,17 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 /**
  * Controller per la gestione dei post.
  * Espone API RESTful per tutte le operazioni sui post.
  * <p>
- * Tutti gli endpoint  richiedono autenticazione.
- * L'utente autenticato viene iniettato automaticamente tramite @AuthenticationPrincipal.
+ * Tutti gli endpoint richiedono autenticazione.
+ * L'utente autenticato viene iniettato automaticamente
+ * tramite @AuthenticationPrincipal.
  * <p>
- * Pattern URL:
- * - /api/posts - Operazioni sulla collezione di post
- * - /api/posts/{postId} - Operazioni su un singolo post
- * - /api/posts/{postId}/hide - Sub-risorse del post
+ * 
  */
 @RestController
 @RequestMapping("/api/posts")
@@ -40,9 +35,6 @@ import org.springframework.web.bind.annotation.*;
 public class PostController {
 
     private final PostService postService;
-    private final UserRepository userRepository;
-    private static final String USER_NAME = "username";
-    private static final String UTENTE = "Utente";
 
     /**
      * POST /api/posts
@@ -52,21 +44,18 @@ public class PostController {
      * Il post può contenere testo, un'immagine, oppure entrambi.
      *
      * @param request     DTO con i dati del post da creare
-     * @param userDetails Dettagli dell'utente autenticato (iniettato automaticamente)
+     * @param userDetails Dettagli dell'utente autenticato (iniettato
+     *                    automaticamente)
      * @return ResponseEntity con il post creato e status 201
      */
     @PostMapping
     public ResponseEntity<PostResponseDTO> creaPost(
             @Valid @RequestBody CreaPostRequestDTO request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @CurrentUser User user) {
 
-        log.debug("POST /api/posts - Username: {}", userDetails.getUsername());
+        log.debug("POST /api/posts - Username: {}", user.getUsername());
 
-        // Recupera l'ID dell'utente autenticato
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException(UTENTE, USER_NAME, userDetails.getUsername()));
-
-        // Delega la creazione al service
+        // Recupera l'ID dell'utente autenticato e delega la creazione al service
         PostResponseDTO post = postService.creaPost(user.getId(), request);
 
         // Restituisce 201 CREATED con il post nel body
@@ -89,23 +78,22 @@ public class PostController {
      * - sort: Campo per ordinamento (default createdAt,desc)
      * <p>
      *
-     * @param pageable    Parametri di paginazione (iniettati automaticamente dalla query string)
+     * @param pageable    Parametri di paginazione (iniettati automaticamente dalla
+     *                    query string)
      * @param userDetails Dettagli dell'utente autenticato
      * @return Page di PostResponseDTO con i post del feed
      */
     @GetMapping
     public ResponseEntity<Page<PostResponseDTO>> ottieniFeed(
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @CurrentUser User user) {
 
         log.debug("GET /api/posts - Username: {}, Pagina: {}",
-                userDetails.getUsername(), pageable.getPageNumber());
+                user.getUsername(), pageable.getPageNumber());
 
-        // Recupera l'ID dell'utente
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException(UTENTE, USER_NAME, userDetails.getUsername()));
+      
 
-        // Ottiene il feed
+        //Recupera l'ID dell'utente e ottiene il feed
         Page<PostResponseDTO> feed = postService.ottieniFeed(user.getId(), pageable);
 
         return ResponseEntity.ok(feed);
@@ -116,7 +104,8 @@ public class PostController {
      * Ottiene i dettagli completi di un singolo post.
      * <p>
      * Restituisce il post con tutti i suoi dettagli, inclusi tutti i commenti.
-     * Questo endpoint viene chiamato quando l'utente clicca su un post per visualizzarlo.
+     * Questo endpoint viene chiamato quando l'utente clicca su un post per
+     * visualizzarlo.
      * <p>
      *
      * @param postId      L'ID del post da visualizzare
@@ -126,13 +115,11 @@ public class PostController {
     @GetMapping("/{postId}")
     public ResponseEntity<PostDettaglioResponseDTO> ottieniPost(
             @PathVariable Long postId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @CurrentUser User user) {
 
-        log.debug("GET /api/posts/{} - Username: {}", postId, userDetails.getUsername());
+        log.debug("GET /api/posts/{} - Username: {}", postId, user.getUsername());
 
-        // Recupera l'ID dell'utente
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException(UTENTE, USER_NAME, userDetails.getUsername()));
+  
 
         // Ottiene il post con tutti i dettagli
         PostDettaglioResponseDTO post = postService.ottieniPost(postId, user.getId());
@@ -156,13 +143,11 @@ public class PostController {
     public ResponseEntity<PostResponseDTO> modificaPost(
             @PathVariable Long postId,
             @Valid @RequestBody ModificaPostRequestDTO request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @CurrentUser User user) {
 
-        log.debug("PUT /api/posts/{} - Username: {}", postId, userDetails.getUsername());
+        log.debug("PUT /api/posts/{} - Username: {}", postId, user.getUsername());
 
-        // Recupera l'ID dell'utente
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException(UTENTE, USER_NAME, userDetails.getUsername()));
+       
 
         // Modifica il post
         PostResponseDTO post = postService.modificaPost(postId, user.getId(), request);
@@ -181,13 +166,11 @@ public class PostController {
     @DeleteMapping("/{postId}")
     public ResponseEntity<Void> eliminaPost(
             @PathVariable Long postId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @CurrentUser User user) {
 
-        log.debug("DELETE /api/posts/{} - Username: {}", postId, userDetails.getUsername());
+        log.debug("DELETE /api/posts/{} - Username: {}", postId, user.getUsername());
 
-        // Recupera l'ID dell'utente
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException(UTENTE, USER_NAME, userDetails.getUsername()));
+      
 
         // Elimina il post
         postService.eliminaPost(postId, user.getId());
@@ -218,13 +201,11 @@ public class PostController {
     public ResponseEntity<Page<PostResponseDTO>> cercaPost(
             @RequestParam("q") String searchTerm,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @CurrentUser User user) {
 
-        log.debug("GET /api/posts/search?q={} - Username: {}", searchTerm, userDetails.getUsername());
+        log.debug("GET /api/posts/search?q={} - Username: {}", searchTerm, user.getUsername());
 
-        // Recupera l'ID dell'utente
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException(UTENTE, USER_NAME, userDetails.getUsername()));
+      
 
         // Esegue la ricerca
         Page<PostResponseDTO> risultati = postService.cercaPost(searchTerm, user.getId(), pageable);
@@ -237,7 +218,8 @@ public class PostController {
      * Ottiene i post di un utente specifico.
      * <p>
      * Questo endpoint viene usato per visualizzare i post nel profilo di un utente.
-     * Mostra tutti i post pubblici dell'utente, escludendo quelli nascosti dall'utente corrente.
+     * Mostra tutti i post pubblici dell'utente, escludendo quelli nascosti
+     * dall'utente corrente.
      *
      * @param userId      L'ID dell'utente di cui visualizzare i post
      * @param pageable    Parametri di paginazione
@@ -248,16 +230,12 @@ public class PostController {
     public ResponseEntity<Page<PostResponseDTO>> ottieniPostUtente(
             @PathVariable Long userId,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @CurrentUser User user) {
 
-        log.debug("GET /api/posts/user/{} - Username: {}", userId, userDetails.getUsername());
-
-        // Recupera l'ID dell'utente corrente
-        User currentUser = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException(UTENTE, USER_NAME, userDetails.getUsername()));
+        log.debug("GET /api/posts/user/{} - Username: {}", userId, user.getUsername());
 
         // Ottiene i post dell'utente specificato
-        Page<PostResponseDTO> posts = postService.ottieniPostUtente(userId, currentUser.getId(), pageable);
+        Page<PostResponseDTO> posts = postService.ottieniPostUtente(userId, user.getId(), pageable);
 
         return ResponseEntity.ok(posts);
     }
@@ -281,13 +259,11 @@ public class PostController {
     @PostMapping("/{postId}/hide")
     public ResponseEntity<Void> nascondiPost(
             @PathVariable Long postId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @CurrentUser User user) {
 
-        log.debug("POST /api/posts/{}/hide - Username: {}", postId, userDetails.getUsername());
+        log.debug("POST /api/posts/{}/hide - Username: {}", postId, user.getUsername());
 
-        // Recupera l'ID dell'utente
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException(UTENTE, USER_NAME, userDetails.getUsername()));
+     
 
         // Nasconde il post
         postService.nascondiPost(postId, user.getId());
@@ -309,14 +285,11 @@ public class PostController {
     @DeleteMapping("/{postId}/hide")
     public ResponseEntity<Void> mostraPost(
             @PathVariable Long postId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @CurrentUser User user) {
 
-        log.debug("DELETE /api/posts/{}/hide - Username: {}", postId, userDetails.getUsername());
+        log.debug("DELETE /api/posts/{}/hide - Username: {}", postId, user.getUsername());
 
-        // Recupera l'ID dell'utente
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException(UTENTE, USER_NAME, userDetails.getUsername()));
-
+    
         // Mostra il post
         postService.mostraPost(postId, user.getId());
 

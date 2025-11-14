@@ -4,11 +4,15 @@ import com.example.backend.dtos.request.CreaPostRequestDTO;
 import com.example.backend.dtos.request.ModificaPostRequestDTO;
 import com.example.backend.dtos.response.PostDettaglioResponseDTO;
 import com.example.backend.dtos.response.PostResponseDTO;
+import com.example.backend.events.DeleteMentionsEvent;
+import com.example.backend.events.MentionsToProcessEvent;
+import com.example.backend.events.PostCreatedEvent;
 import com.example.backend.exception.InvalidInputException;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.exception.UnauthorizedException;
 import com.example.backend.mappers.PostMapper;
 import com.example.backend.models.HiddenPost;
+import com.example.backend.models.MentionableType;
 import com.example.backend.models.Post;
 import com.example.backend.models.User;
 import com.example.backend.repositories.HiddenPostRepository;
@@ -16,6 +20,7 @@ import com.example.backend.repositories.PostRepository;
 import com.example.backend.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -34,6 +39,7 @@ public class PostService {
     private final UserRepository userRepository;
     private final HiddenPostRepository hiddenPostRepository;
     private final PostMapper postMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Crea un nuovo post.
@@ -82,8 +88,24 @@ public class PostService {
         post = postRepository.save(post);
         log.info("Post creato con successo - ID: {} da utente: {}", post.getId(), autore.getUsername());
 
-        // Converti in DTO e restituisci
+        // Pubblica evento per processing menzioni asincrono
+        if (request.getContenuto() != null && !request.getContenuto().isBlank()) {
+            eventPublisher.publishEvent(new MentionsToProcessEvent(
+                    MentionableType.POST,
+                    post.getId(),
+                    request.getContenuto(),
+                    userId,
+                    false // non è un update
+            ));
+            log.debug("Evento MentionsToProcessEvent pubblicato per post ID: {}", post.getId());
+        }
 
+        // Pubblica evento per notifiche asincrone
+        // Le notifiche verranno create in background senza bloccare questa transazione
+        eventPublisher.publishEvent(new PostCreatedEvent(userId, post.getId()));
+        log.debug("Evento PostCreatedEvent pubblicato per post ID: {}", post.getId());
+
+        // Converti in DTO e restituisci
         return postMapper.toPostResponseDTO(post, userId);
     }
 
@@ -123,15 +145,25 @@ public class PostService {
         }
 
         // Aggiorna il contenuto
-
         if (request.getContenuto() != null) {
             post.setContent(request.getContenuto());
         }
 
         // Salva le modifiche
-
         post = postRepository.save(post);
         log.info("Post modificato con successo - ID: {}", postId);
+
+        // Pubblica evento per aggiornamento menzioni asincrono
+        if (request.getContenuto() != null && !request.getContenuto().isBlank()) {
+            eventPublisher.publishEvent(new MentionsToProcessEvent(
+                    MentionableType.POST,
+                    postId,
+                    request.getContenuto(),
+                    userId,
+                    true // è un update
+            ));
+            log.debug("Evento MentionsToProcessEvent (update) pubblicato per post ID: {}", postId);
+        }
 
         return postMapper.toPostResponseDTO(post, userId);
     }
@@ -165,6 +197,10 @@ public class PostService {
         // Soft delete: marca il post come cancellato invece di eliminarlo fisicamente
         post.setIsDeletedByAuthor(true);
         postRepository.save(post);
+
+        // Pubblica evento per eliminazione menzioni asincrona
+        eventPublisher.publishEvent(new DeleteMentionsEvent(MentionableType.POST, postId));
+        log.debug("Evento DeleteMentionsEvent pubblicato per post ID: {}", postId);
 
         log.info("Post eliminato con successo (soft delete) - ID: {}", postId);
     }
@@ -260,7 +296,7 @@ public class PostService {
     /**
      * Ottiene i post di un utente specifico.
      * <p>
-     * Questo metodo viene usato quando visiti il profilo di un altro studente.
+     * Questo metodo viene usato quando si visita il profilo di un altro studente.
      * Mostra tutti i suoi post pubblici, escludendo:
      * - Post cancellati dall'autore
      * - Post che l'utente corrente ha nascosto
@@ -290,7 +326,7 @@ public class PostService {
     /**
      * Nasconde un post per l'utente corrente.
      * <p>
-     * Quando nascondi un post, questo non viene eliminato né modificato.
+     * Quando si nasconde un post, questo non viene eliminato né modificato.
      * Semplicemente viene creato un record nella tabella HiddenPost.
      * <p>
      * Dopo aver nascosto un post:
