@@ -147,4 +147,16 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * Trova tutti i post di un utente (per eliminazione account).
      */
     List<Post> findByUserId(Long userId);
+
+    /**
+     * Verifica se esiste un post con l'immagine specificata appartenente all'utente.
+     * Usato per verificare ownership prima di eliminare un'immagine.
+     */
+    boolean existsByImageUrlAndUserId(String imageUrl, Long userId);
+
+    /**
+     * Trova un post tramite l'URL dell'immagine.
+     * Usato per rimuovere il riferimento all'immagine dopo l'eliminazione.
+     */
+    Optional<Post> findByImageUrl(String imageUrl);
 }

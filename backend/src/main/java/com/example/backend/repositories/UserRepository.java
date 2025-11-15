@@ -114,6 +114,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Long countTotalLikesReceivedByUserId(@Param("userId") Long userId);
 
 
+    /**
+     * Verifica se esiste un utente con l'ID specificato e profilePictureUrl.
+     * Usato per verificare ownership prima di eliminare un'immagine del profilo.
+     */
+    boolean existsByIdAndProfilePictureUrl(Long id, String profilePictureUrl);
+
+    /**
+     * Trova un utente tramite l'URL dell'immagine del profilo.
+     * Usato per rimuovere il riferimento all'immagine dopo l'eliminazione.
+     */
+    Optional<User> findByProfilePictureUrl(String profilePictureUrl);
+
     // Metodo default per validare limite studenti
     default void validateStudentLimit() {
         long count = count();

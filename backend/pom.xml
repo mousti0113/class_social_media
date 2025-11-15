@@ -129,6 +129,12 @@
 			<groupId>com.github.ben-manes.caffeine</groupId>
 			<artifactId>caffeine</artifactId>
 		</dependency>
+		<!-- Cloudinary SDK per gestione immagini -->
+<dependency>
+    <groupId>com.cloudinary</groupId>
+    <artifactId>cloudinary-core</artifactId>
+    <version>2.3.2</version>
+</dependency>
 	</dependencies>
 
 	<build>
