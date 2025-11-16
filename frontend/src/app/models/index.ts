@@ -240,7 +240,7 @@ export interface PasswordResetConfirmDTO {
 export interface AggiornaProfiloRequestDTO {
   nomeCompleto?: string; // Max 100 caratteri
   bio?: string; // Max 100 caratteri
-  profilePictureUrl?: string; // URL Firebase
+  profilePictureUrl?: string; // URL Cloudinary
 }
 
 /**
@@ -263,7 +263,7 @@ export interface DisattivaAccountRequestDTO {
  */
 export interface CreaPostRequestDTO {
   contenuto?: string; // Max 5000 caratteri
-  imageUrl?: string; // URL Firebase dopo upload
+  imageUrl?: string; // URL Cloudinary dopo upload
 }
 
 /**
