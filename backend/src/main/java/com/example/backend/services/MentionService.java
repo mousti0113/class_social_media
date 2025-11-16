@@ -4,9 +4,9 @@ import com.example.backend.dtos.response.MentionResponseDTO;
 import com.example.backend.mappers.MentionMapper;
 import com.example.backend.models.*;
 import com.example.backend.repositories.*;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -33,16 +33,31 @@ import java.util.stream.Collectors;
 
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class MentionService {
 
-    private final MentionRepository mentionRepository;
+ private final MentionRepository mentionRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final MentionMapper mentionMapper;
+    
+    // Field injection solo per self (auto-riferimento)
     @Lazy
-private final MentionService self;
+    @Autowired
+    private MentionService self;
+
+    // Constructor injection per le altre dipendenze
+    public MentionService(
+            MentionRepository mentionRepository,
+            UserRepository userRepository,
+            NotificationService notificationService,
+            MentionMapper mentionMapper) {
+        this.mentionRepository = mentionRepository;
+        this.userRepository = userRepository;
+        this.notificationService = notificationService;
+        this.mentionMapper = mentionMapper;
+    }
+
 
     // Pattern regex per rilevare @username
     // Rileva @ seguito da caratteri alfanumerici, underscore e punto
