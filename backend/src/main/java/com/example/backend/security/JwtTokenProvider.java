@@ -1,5 +1,6 @@
 package com.example.backend.security;
 
+import com.example.backend.models.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -10,6 +11,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -33,8 +35,34 @@ public class JwtTokenProvider {
     private Long refreshTokenExpiration;
 
     /**
-     * Genera un access token per l'utente
+     * Genera un access token per l'utente con tutti i dati necessari nel payload
      */
+    public String generateAccessToken(User user) {
+        log.debug("Generazione access token per utente: {} (ID: {})", user.getUsername(), user.getId());
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("tipo", "access");
+        claims.put("userId", user.getId());
+        claims.put("email", user.getEmail());
+        claims.put("nomeCompleto", user.getFullName());
+        claims.put("bio", user.getBio());
+        claims.put("profilePictureUrl", user.getProfilePictureUrl());
+        claims.put("isAdmin", user.getIsAdmin());
+        claims.put("isActive", user.getIsActive());
+
+        // Converte LocalDateTime in String ISO 8601 se presente
+        if (user.getLastSeen() != null) {
+            claims.put("lastSeen", user.getLastSeen().atZone(ZoneId.systemDefault()).toInstant().toString());
+        }
+
+        return generateToken(claims, user.getUsername(), accessTokenExpiration);
+    }
+
+    /**
+     * Genera un access token per l'utente (versione legacy con solo UserDetails)
+     * @deprecated Usa generateAccessToken(User user) per includere tutti i dati utente nel token
+     */
+    @Deprecated
     public String generateAccessToken(UserDetails userDetails) {
         log.debug("Generazione access token per utente: {}", userDetails.getUsername());
 

@@ -21,8 +21,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,7 +39,6 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
-    private final UserDetailsService userDetailsService;
     private final RefreshTokenService refreshTokenService;
     private final UserMapper userMapper;
     private final ApplicationEventPublisher eventPublisher;
@@ -86,9 +83,8 @@ public class AuthService {
         eventPublisher.publishEvent(new WelcomeEmailEvent(user.getEmail(), user.getUsername()));
         log.debug("Evento WelcomeEmailEvent pubblicato per utente: {}", user.getUsername());
 
-        // Genera token
-        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getUsername());
-        String accessToken = jwtTokenProvider.generateAccessToken(userDetails);
+        // Genera token con tutti i dati utente
+        String accessToken = jwtTokenProvider.generateAccessToken(user);
         RefreshToken refreshToken = refreshTokenService.creaRefreshToken(user.getId());
 
         return LoginResponseDTO.builder()
@@ -126,15 +122,13 @@ public class AuthService {
                     return new ResourceNotFoundException("Utente", "username", request.getUsername());
                 });
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(request.getUsername());
-
-        // Genera token
-        String accessToken = jwtTokenProvider.generateAccessToken(userDetails);
-        RefreshToken refreshToken = refreshTokenService.creaRefreshToken(user.getId());
-
         // Aggiorna last seen
         user.setLastSeen(LocalDateTime.now());
-        userRepository.save(user);
+        user = userRepository.save(user);
+
+        // Genera token con tutti i dati utente (incluso lastSeen aggiornato)
+        String accessToken = jwtTokenProvider.generateAccessToken(user);
+        RefreshToken refreshToken = refreshTokenService.creaRefreshToken(user.getId());
 
         log.info("Login effettuato con successo per utente: {} (ID: {})", user.getUsername(), user.getId());
 
@@ -156,10 +150,9 @@ public class AuthService {
         return refreshTokenService.verificaRefreshToken(request.getRefreshToken())
                 .map(refreshToken -> {
                     User user = refreshToken.getUser();
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(user.getUsername());
 
-                    // Genera nuovo access token
-                    String newAccessToken = jwtTokenProvider.generateAccessToken(userDetails);
+                    // Genera nuovo access token con tutti i dati utente
+                    String newAccessToken = jwtTokenProvider.generateAccessToken(user);
 
                     // Rigenera anche il refresh token per sicurezza
                     RefreshToken newRefreshToken = refreshTokenService.creaRefreshToken(user.getId());
