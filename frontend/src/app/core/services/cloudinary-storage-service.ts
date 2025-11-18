@@ -51,29 +51,29 @@ export class CloudinaryStorageService {
    * @param onProgress Callback per monitorare il progresso (opzionale)
    * @returns Observable con la risposta di Cloudinary
    */
-uploadImage(
-  file: File,
-  type: ImageType,
-  onProgress?: (progress: number) => void
-): Observable<CloudinaryUploadResponse> {
-  // Validazione del file
-  const validationError = this.validateImage(file);
-  if (validationError) {
-    return throwError(() => new UploadValidationError(validationError));
-  }
+  uploadImage(
+    file: File,
+    type: ImageType,
+    onProgress?: (progress: number) => void
+  ): Observable<CloudinaryUploadResponse> {
+    // Validazione del file
+    const validationError = this.validateImage(file);
+    if (validationError) {
+      return throwError(() => new UploadValidationError(validationError));
+    }
 
-  // Comprimi l'immagine prima dell'upload
-  return from(this.compressImage(file)).pipe(
-    switchMap((compressedFile) => {
-      const formData = this.buildFormData(compressedFile, type);
-      return this.performUpload(formData, onProgress);
-    }),
-    catchError((error) => {
-      console.error('Errore upload immagine:', error);
-      return throwError(() => error);
-    })
-  );
-}
+    // Comprimi l'immagine prima dell'upload
+    return from(this.compressImage(file)).pipe(
+      switchMap((compressedFile) => {
+        const formData = this.buildFormData(compressedFile, type);
+        return this.performUpload(formData, onProgress);
+      }),
+      catchError((error) => {
+        console.error('Errore upload immagine:', error);
+        return throwError(() => error);
+      })
+    );
+  }
 
   /**
    * Valida un file immagine
@@ -194,16 +194,16 @@ uploadImage(
    */
   private buildFormData(file: File, type: ImageType): FormData {
     const formData = new FormData();
-    
+
     formData.append('file', file);
     formData.append('upload_preset', this.uploadPreset);
-    
+
     // Organizza i file in sottocartelle per tipo
     const folder = `${this.baseFolder}/${type}s`; // profiles, posts
     formData.append('folder', folder);
-    
+
     // Genera un public_id univoco (timestamp + random)
-    const uniqueId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const uniqueId = `${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
     formData.append('public_id', uniqueId);
 
     return formData;
