@@ -11,12 +11,12 @@ export interface Toast {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ToastService {
   // State privato - lista toast attivi
   private readonly _toasts = signal<Toast[]>([]);
-  
+
   // Selector pubblico readonly
   readonly toasts = this._toasts.asReadonly();
 
@@ -31,7 +31,7 @@ export class ToastService {
     return this.show({
       type: 'success',
       message,
-      duration
+      duration,
     });
   }
 
@@ -42,7 +42,7 @@ export class ToastService {
     return this.show({
       type: 'error',
       message,
-      duration
+      duration,
     });
   }
 
@@ -53,7 +53,7 @@ export class ToastService {
     return this.show({
       type: 'warning',
       message,
-      duration
+      duration,
     });
   }
 
@@ -64,7 +64,7 @@ export class ToastService {
     return this.show({
       type: 'info',
       message,
-      duration
+      duration,
     });
   }
 
@@ -78,11 +78,11 @@ export class ToastService {
       type: options.type,
       message: options.message,
       duration: options.duration ?? this.DEFAULT_DURATION,
-      dismissible: options.dismissible ?? true
+      dismissible: options.dismissible ?? true,
     };
 
     const currentToasts = this._toasts();
-    
+
     // Limita numero massimo toast simultanei
     if (currentToasts.length >= this.MAX_TOASTS) {
       this._toasts.set([...currentToasts.slice(1), toast]);
@@ -91,11 +91,8 @@ export class ToastService {
     }
 
     // Auto-dismiss dopo durata specificata
-    if(toast.duration !== undefined && toast.duration !== null ){
-    if (toast.duration > 0) {
+    if (toast.duration && toast.duration > 0) {
       setTimeout(() => this.dismiss(toast.id), toast.duration);
-    }
-
     }
 
     return toast.id;
@@ -106,7 +103,7 @@ export class ToastService {
    */
   dismiss(id: string): void {
     const currentToasts = this._toasts();
-    this._toasts.set(currentToasts.filter(toast => toast.id !== id));
+    this._toasts.set(currentToasts.filter((toast) => toast.id !== id));
   }
 
   /**
