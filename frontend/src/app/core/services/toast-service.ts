@@ -1,122 +1,112 @@
 import { Injectable, signal } from '@angular/core';
-
-export type ToastType = 'success' | 'error' | 'warning' | 'info';
-
-export interface Toast {
-  id: string;
-  type: ToastType;
-  message: string;
-  duration?: number;
-  dismissible?: boolean;
-}
+import { Toast, ToastOptions, ToastType } from '../../models/toast.model';
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: 'root'
 })
 export class ToastService {
-  // State privato - lista toast attivi
+  // Signal per la lista di toast attivi
   private readonly _toasts = signal<Toast[]>([]);
-
-  // Selector pubblico readonly
+  
+  // Espone il signal come readonly
   readonly toasts = this._toasts.asReadonly();
-
-  // Configurazione
-  private readonly DEFAULT_DURATION = 3000;
-  private readonly MAX_TOASTS = 5;
-
-  /**
-   * Mostra toast di successo
-   */
-  success(message: string, duration?: number): string {
-    return this.show({
-      type: 'success',
-      message,
-      duration,
-    });
-  }
+  
+  // Contatore per generare ID univoci
+  private idCounter = 0;
 
   /**
-   * Mostra toast di errore
+   * Mostra un toast generico
    */
-  error(message: string, duration?: number): string {
-    return this.show({
-      type: 'error',
-      message,
-      duration,
-    });
-  }
+  show(message: string, options?: ToastOptions): string {
+    const id = this.generateId();
+    const type = options?.type ?? 'info';
+    const dismissible = options?.dismissible ?? true;
+    const duration = options?.duration ?? 5000;
 
-  /**
-   * Mostra toast di warning
-   */
-  warning(message: string, duration?: number): string {
-    return this.show({
-      type: 'warning',
-      message,
-      duration,
-    });
-  }
-
-  /**
-   * Mostra toast informativo
-   */
-  info(message: string, duration?: number): string {
-    return this.show({
-      type: 'info',
-      message,
-      duration,
-    });
-  }
-
-  /**
-   * Mostra toast generico
-   * Restituisce l'ID del toast creato
-   */
-  show(options: Omit<Toast, 'id'>): string {
     const toast: Toast = {
-      id: this.generateId(),
-      type: options.type,
-      message: options.message,
-      duration: options.duration ?? this.DEFAULT_DURATION,
-      dismissible: options.dismissible ?? true,
+      id,
+      message,
+      type,
+      dismissible,
+      duration
     };
 
-    const currentToasts = this._toasts();
+    // Aggiunge il toast alla lista
+    this._toasts.update(toasts => [...toasts, toast]);
 
-    // Limita numero massimo toast simultanei
-    if (currentToasts.length >= this.MAX_TOASTS) {
-      this._toasts.set([...currentToasts.slice(1), toast]);
-    } else {
-      this._toasts.set([...currentToasts, toast]);
+    // Auto-dismiss dopo la durata specificata (se > 0)
+    if (duration > 0) {
+      setTimeout(() => {
+        this.dismiss(id);
+      }, duration);
     }
 
-    // Auto-dismiss dopo durata specificata
-    if (toast.duration && toast.duration > 0) {
-      setTimeout(() => this.dismiss(toast.id), toast.duration);
-    }
-
-    return toast.id;
+    return id;
   }
 
   /**
-   * Rimuove un toast specifico
+   * Mostra un toast di successo
+   */
+  success(message: string, options?: Omit<ToastOptions, 'type'>): string {
+    return this.show(message, { ...options, type: 'success' });
+  }
+
+  /**
+   * Mostra un toast di errore
+   */
+  error(message: string, options?: Omit<ToastOptions, 'type'>): string {
+    return this.show(message, { 
+      ...options, 
+      type: 'error',
+      // Gli errori hanno durata più lunga di default (7 secondi)
+      duration: options?.duration ?? 7000
+    });
+  }
+
+  /**
+   * Mostra un toast di warning
+   */
+  warning(message: string, options?: Omit<ToastOptions, 'type'>): string {
+    return this.show(message, { 
+      ...options, 
+      type: 'warning',
+      // I warning hanno durata leggermente più lunga (6 secondi)
+      duration: options?.duration ?? 6000
+    });
+  }
+
+  /**
+   * Mostra un toast informativo
+   */
+  info(message: string, options?: Omit<ToastOptions, 'type'>): string {
+    return this.show(message, { ...options, type: 'info' });
+  }
+
+  /**
+   * Chiude un toast specifico per ID
    */
   dismiss(id: string): void {
-    const currentToasts = this._toasts();
-    this._toasts.set(currentToasts.filter((toast) => toast.id !== id));
+    this._toasts.update(toasts => toasts.filter(toast => toast.id !== id));
   }
 
   /**
-   * Rimuove tutti i toast
+   * Chiude tutti i toast attivi
    */
   dismissAll(): void {
     this._toasts.set([]);
   }
 
   /**
-   * Genera ID univoco per il toast
+   * Chiude tutti i toast di un tipo specifico
+   */
+  dismissByType(type: ToastType): void {
+    this._toasts.update(toasts => toasts.filter(toast => toast.type !== type));
+  }
+
+  /**
+   * Genera un ID univoco per i toast
    */
   private generateId(): string {
-    return `toast_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    return `toast-${Date.now()}-${this.idCounter++}`;
   }
 }
