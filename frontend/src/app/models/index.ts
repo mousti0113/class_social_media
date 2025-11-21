@@ -304,7 +304,23 @@ export interface WebSocketTestMessageDTO {
   content: string;
   type?: string;
 }
+/**
+ * Interfaccia per le statistiche utente
+ * Restituita dall'endpoint /api/users/{userId}/stats
+ */
+export interface UserStats {
+  /** Numero di post pubblicati dall'utente */
+  postsCount: number;
 
+  /** Numero di commenti scritti dall'utente */
+  commentsCount: number;
+
+  /** Numero di like ricevuti sui propri post */
+  likesReceivedCount: number;
+
+  /** Totale interazioni (post + commenti) */
+  totalInteractions: number;
+}
 // ============================================================================
 // UTILITY TYPES
 // ============================================================================
