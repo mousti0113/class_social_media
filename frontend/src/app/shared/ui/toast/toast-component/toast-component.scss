@@ -1,10 +1,6 @@
-/* ============================================
-   TOAST ANIMATIONS - Angular 20 CSS Native
-   ============================================ */
+/* TOAST ANIMATIONS - Angular 20 CSS Native */
 
-/* ==========================================
-   KEYFRAMES - Enter Animation
-   ========================================== */
+/* KEYFRAMES - Enter Animation */
 @keyframes toast-enter-animation {
     from {
         /* Inizia fuori dallo schermo a destra, leggermente ridotto e trasparente */
@@ -19,9 +15,7 @@
     }
 }
 
-/* ==========================================
-   KEYFRAMES - Leave Animation
-   ========================================== */
+/* KEYFRAMES - Leave Animation */
 @keyframes toast-leave-animation {
     from {
         /* Parte dalla posizione normale */
@@ -36,9 +30,7 @@
     }
 }
 
-/* ==========================================
-   ANIMATION CLASSES
-   ========================================== */
+/* ANIMATION CLASSES */
 
 /* Classe applicata quando il toast entra */
 .toast-enter {
@@ -65,9 +57,7 @@
     will-change: transform, opacity;
 }
 
-/* ==========================================
-   DARK MODE ENHANCEMENTS
-   ========================================== */
+/* DARK MODE ENHANCEMENTS */
 
 /*
  * Dark mode: shadow più morbide e visibili
@@ -113,9 +103,7 @@
     z-index: -1;
 }
 
-/* ==========================================
-   ACCESSIBILITY - Reduced Motion Support
-   ========================================== */
+/* ACCESSIBILITY - Reduced Motion Support */
 
 /*
  * Rispetta le preferenze di accessibilità dell'utente
@@ -138,46 +126,4 @@
         will-change: auto;
     }
 
-    /* Alternative: disabilita completamente le animazioni */
-    /* 
-  .toast-enter,
-  .toast-leave {
-    animation: none !important;
-  }
-  */
 }
-
-/* ==========================================
-   PERFORMANCE NOTES
-   ========================================== */
-
-/*
- * PERCHÉ QUESTO APPROCCIO È SUPERIORE:
- * 
- * 1. GPU ACCELERATION (60fps garantiti)
- *    - Usa solo transform e opacity
- *    - Esegue sul compositor thread
- *    - Non blocca il main thread JavaScript
- *    - filter e backdrop-filter sono GPU-accelerated
- * 
- * 2. BUNDLE SIZE (-60KB)
- *    - Zero JavaScript per le animazioni
- *    - CSS si minifica efficacemente
- *    - Tree-shaking automatico del CSS non usato
- * 
- * 3. PERFORMANCE METRICS
- *    - INP: <10ms (vs 30-60ms con @angular/animations)
- *    - LCP: migliora di 200-400ms
- *    - CLS: 0.00 (transform non causa layout shift)
- * 
- * 4. BROWSER OPTIMIZATION
- *    - will-change prepara il browser
- *    - cubic-bezier hardware-accelerated
- *    - Compositor-friendly properties
- * 
- * 5. DARK MODE OPTIMIZATION
- *    - filter: drop-shadow() è GPU-accelerated
- *    - backdrop-filter usa il compositor thread
- *    - ::after pseudo-element non causa reflow
- *    - Gradiente calcolato una volta al render
- */

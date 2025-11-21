@@ -1,7 +1,7 @@
 !-- Container toast posizionato in alto a destra -->
 <div class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full sm:max-w-md pointer-events-none">
   
-  <!-- Itera su tutti i toast attivi con sintassi moderna @for -->
+  <!-- Itera su tutti i toast attivi-->
   @for (toast of toasts(); track toast.id) {
     <div 
       animate.enter="toast-enter"
