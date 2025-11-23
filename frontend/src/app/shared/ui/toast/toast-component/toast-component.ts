@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { LucideAngularModule, CircleCheck, CircleX, TriangleAlert, Info, X } from 'lucide-angular';
-import { ToastService, ToastType } from '../../../../core/services/toast-service';
+import { ToastService } from '../../../../core/services/toast-service';
+import { ToastType } from '../../../../models/toast.model';
 
 @Component({
   selector: 'app-toast-component',
