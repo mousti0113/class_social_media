@@ -1,0 +1,44 @@
+<!--
+  Dropdown Component
+
+  Utilizzo:
+  <app-dropdown>
+    <button trigger>Clicca qui</button>
+    <div menu>
+      <a href="#">Opzione 1</a>
+      <a href="#">Opzione 2</a>
+    </div>
+  </app-dropdown>
+
+  Content Projection:
+  - [trigger]: Elemento che apre/chiude il dropdown. NOTA: Viene avvolto in un <button>, quindi non passare altri elementi interattivi (button, link).
+  - [menu]: Contenuto del menu dropdown
+-->
+
+<div class="relative inline-block">
+  <!-- Trigger Button -->
+
+  <button
+    type="button"
+    (click)="toggle()"
+    class="cursor-pointer bg-transparent border-0 p-0 text-left"
+  >
+    <ng-content select="[trigger]"></ng-content>
+  </button>
+
+  <!-- Dropdown Menu -->
+  @if (isOpen()) {
+  <div
+    class="absolute z-50 animate-slide-up"
+    [ngClass]="placementClasses()"
+    [style.min-width]="minWidthStyle()"
+  >
+    <!-- Menu Content -->
+    <div
+      class="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg shadow-lg overflow-hidden"
+    >
+      <ng-content select="[menu]"></ng-content>
+    </div>
+  </div>
+  }
+</div>
