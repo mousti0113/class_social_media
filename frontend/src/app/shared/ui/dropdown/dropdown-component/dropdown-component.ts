@@ -1,12 +1,4 @@
-import {
-  Component,
-  input,
-  signal,
-  computed,
-  HostListener,
-  ElementRef,
-  effect,
-} from '@angular/core';
+import { Component, input, signal, computed, HostListener, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 /**
@@ -67,7 +59,7 @@ export class DropdownComponent {
     return `${this.minWidth()}rem`;
   });
 
-  constructor(private elementRef: ElementRef) {}
+  constructor(private readonly elementRef: ElementRef) {}
 
   /**
    * Chiude il dropdown quando si clicca fuori
