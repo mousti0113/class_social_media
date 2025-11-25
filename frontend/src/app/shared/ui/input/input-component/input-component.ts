@@ -27,7 +27,7 @@ providers: [
   ],
 })
 export class InputComponent implements ControlValueAccessor {
-// Icone per toggle password
+  // Icone per toggle password
   readonly Eye = Eye;
   readonly EyeOff = EyeOff;
 
@@ -115,7 +115,7 @@ export class InputComponent implements ControlValueAccessor {
   readonly value = signal<string>('');
   readonly isFocused = signal<boolean>(false);
   readonly showPassword = signal<boolean>(false);
-  private isDisabledByForm = signal<boolean>(false);
+  private readonly isDisabledByForm = signal<boolean>(false);
 
   // Callbacks per ControlValueAccessor
   private onChange: (value: string) => void = () => {};
@@ -161,7 +161,7 @@ export class InputComponent implements ControlValueAccessor {
 
     // Stato errore
     if (this.hasError()) {
-      return `${base} border-error-500 focus-within:border-error-500 focus-within:ring-2 focus-within:ring-error-500/20`;
+      return `${base} border-error-500 ring-2 ring-error-500/20`;
     }
 
     // Stato focus
@@ -175,7 +175,7 @@ export class InputComponent implements ControlValueAccessor {
     }
 
     // Stato default
-    return `${base} border-gray-300 hover:border-gray-400 focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 dark:border-gray-600 dark:hover:border-gray-500 bg-white dark:bg-gray-800`;
+    return `${base} border-gray-300 hover:border-gray-400 dark:border-gray-600 dark:hover:border-gray-500 bg-white dark:bg-gray-800`;
   });
 
   /**

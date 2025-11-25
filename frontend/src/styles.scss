@@ -161,12 +161,6 @@
    GLOBAL STYLES
    ============================================ */
 
-* {
-  /* Rimuove margini e padding default */
-  margin: 0;
-
-  box-sizing: border-box;
-}
 
 html {
   /* Font antialiasing per testo più pulito */
@@ -320,7 +314,11 @@ body.dark {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
-
+/* Esclude input e textarea (gestiti dai componenti) */
+input:focus-visible,
+textarea:focus-visible {
+  outline: none;
+}
 /* ============================================
    SELECTION STYLES
    ============================================ */
