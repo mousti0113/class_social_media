@@ -3,8 +3,7 @@
   class="dialog-element"
   aria-labelledby="dialog-title"
   aria-describedby="dialog-message"
-  (click)="onOverlayClick($event)"
-  (cancel)="cancel()"
+  (cancel)="$event.preventDefault()"
 >
   <!-- Dialog Container -->
   <div class="dialog-content bg-white dark:bg-gray-800 rounded-xl shadow-xl overflow-hidden">

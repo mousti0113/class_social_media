@@ -43,6 +43,7 @@ export class DialogComponent {
 
   /**
    * Dati del dialog corrente
+   * Dipende da isOpen() per ricalcolarsi quando il dialog si apre
    */
   readonly dialogData = computed(() => {
     // Forza la dipendenza da isOpen per ricalcolare quando cambia
@@ -96,15 +97,5 @@ export class DialogComponent {
    */
   cancel(): void {
     this.dialogService.close(false);
-  }
-
-  /**
-   * Handler click sull'overlay (backdrop del dialog nativo)
-   */
-  onOverlayClick(event: MouseEvent): void {
-    const dialog = this.dialogElement()?.nativeElement;
-    if (event.target === dialog) {
-      this.cancel();
-    }
   }
 }
