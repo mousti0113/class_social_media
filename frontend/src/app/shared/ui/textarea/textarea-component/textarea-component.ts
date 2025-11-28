@@ -1,4 +1,4 @@
-import { Component, input, computed, output, signal, forwardRef, ElementRef, viewChild, afterNextRender } from '@angular/core';
+import { Component, input, computed, output, signal, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
@@ -10,7 +10,7 @@ export type TextareaSize = 'sm' | 'md' | 'lg';
 /**
  * Modalità di resize
  */
-export type TextareaResize = 'none' | 'vertical' | 'horizontal' | 'both' | 'auto';
+export type TextareaResize = 'none' | 'vertical' | 'horizontal' | 'both';
 
 @Component({
   selector: 'app-textarea-component',
@@ -26,9 +26,6 @@ export type TextareaResize = 'none' | 'vertical' | 'horizontal' | 'both' | 'auto
   ],
 })
 export class TextareaComponent implements ControlValueAccessor {
-// Riferimento alla textarea per auto-resize
-  readonly textareaRef = viewChild<ElementRef<HTMLTextAreaElement>>('textareaElement');
-
   /**
    * Label del campo
    */
@@ -120,15 +117,6 @@ export class TextareaComponent implements ControlValueAccessor {
   private onChange: (value: string) => void = () => {};
   private onTouched: () => void = () => {};
 
-  constructor() {
-    // Auto-resize dopo il render
-    afterNextRender(() => {
-      if (this.resize() === 'auto') {
-        this.adjustHeight();
-      }
-    });
-  }
-
   /**
    * Verifica se la textarea è in stato di errore
    */
@@ -194,7 +182,8 @@ export class TextareaComponent implements ControlValueAccessor {
    * Classi CSS per la textarea
    */
   readonly textareaClasses = computed(() => {
-    const base = 'w-full bg-transparent outline-none text-gray-900 placeholder-gray-400 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg';
+    const base =
+      'w-full bg-transparent outline-none text-gray-900 placeholder-gray-400 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg';
 
     const sizeMap: Record<TextareaSize, string> = {
       sm: 'text-sm p-2.5',
@@ -202,13 +191,11 @@ export class TextareaComponent implements ControlValueAccessor {
       lg: 'text-lg p-4',
     };
 
-    // Resize
     const resizeMap: Record<TextareaResize, string> = {
       none: 'resize-none',
       vertical: 'resize-y',
       horizontal: 'resize-x',
       both: 'resize',
-      auto: 'resize-none overflow-hidden',
     };
 
     // Cursor per disabled
@@ -230,10 +217,6 @@ export class TextareaComponent implements ControlValueAccessor {
   // ControlValueAccessor implementation
   writeValue(value: string): void {
     this.value.set(value || '');
-    // Aggiorna altezza se auto-resize
-    if (this.resize() === 'auto') {
-      setTimeout(() => this.adjustHeight(), 0);
-    }
   }
 
   registerOnChange(fn: (value: string) => void): void {
@@ -256,11 +239,6 @@ export class TextareaComponent implements ControlValueAccessor {
     const newValue = target.value;
     this.value.set(newValue);
     this.onChange(newValue);
-
-    // Auto-resize
-    if (this.resize() === 'auto') {
-      this.adjustHeight();
-    }
   }
 
   /**
@@ -278,16 +256,5 @@ export class TextareaComponent implements ControlValueAccessor {
     this.isFocused.set(false);
     this.onTouched();
     this.blurred.emit(event);
-  }
-
-  /**
-   * Regola l'altezza automaticamente in base al contenuto
-   */
-  private adjustHeight(): void {
-    const textarea = this.textareaRef()?.nativeElement;
-    if (textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = `${textarea.scrollHeight}px`;
-    }
   }
 }
