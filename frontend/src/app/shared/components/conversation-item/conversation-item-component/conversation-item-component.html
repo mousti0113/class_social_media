@@ -1,0 +1,45 @@
+<div
+  [ngClass]="containerClasses()"
+  (click)="onSelect()"
+  (keyup.enter)="onSelect()"
+  tabindex="0"
+  role="button"
+  [attr.aria-selected]="isSelected()"
+>
+  <!-- Avatar con status online -->
+  <app-avatar
+    [src]="profilePictureUrl()"
+    [name]="nomeCompleto()"
+    size="md"
+    [status]="avatarStatus()"
+  />
+
+  <!-- Info conversazione -->
+  <div class="flex-1 min-w-0">
+    <div class="flex items-center justify-between gap-2">
+      <!-- Nome utente -->
+      <p [ngClass]="nameClasses()">
+        {{ nomeCompleto() }}
+      </p>
+
+      <!-- Timestamp ultima attività -->
+      <span class="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+        {{ lastActivityAt() | timeAgo }}
+      </span>
+    </div>
+
+    <div class="flex items-center justify-between gap-2 mt-0.5">
+      <!-- Anteprima ultimo messaggio -->
+      <p [ngClass]="messageClasses()">
+        {{ truncatedMessage() }}
+      </p>
+
+      <!-- Badge messaggi non letti -->
+      @if (unreadCount() > 0) {
+        <app-badge-component variant="primary" size="sm" [pill]="true">
+          {{ unreadBadgeText() }}
+        </app-badge-component>
+      }
+    </div>
+  </div>
+</div>
