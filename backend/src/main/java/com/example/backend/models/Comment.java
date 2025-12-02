@@ -16,8 +16,8 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@EqualsAndHashCode(callSuper = true, exclude = {"childComments", "hiddenByUsers"})
-@ToString(exclude = {"childComments", "hiddenByUsers", "parentComment", "post"})
+@EqualsAndHashCode(callSuper = true, exclude = {"childComments", "hiddenByUsers", "parentComment", "post", "user"})
+@ToString(exclude = {"childComments", "hiddenByUsers", "parentComment", "post", "user"})
 public class Comment extends BaseEntity {
     
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

@@ -14,7 +14,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(callSuper = true, exclude = {"mentionedUser", "mentioningUser"})
 @ToString(exclude = {"mentionedUser", "mentioningUser"})
 public class Mention extends BaseEntity {
     

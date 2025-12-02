@@ -38,7 +38,7 @@ public class AuthController {
      * @param request DTO con username, email, password e nome completo
      * @return LoginResponseDTO con access token, refresh token e dati utente
      * @throws ResourceAlreadyExistsException se username o email già esistono
-     * @throws LimitExceededException se si supera il limite di 17 studenti
+     * @throws LimitExceededException         se si supera il limite di 17 studenti
      */
     @PostMapping("/register")
     public ResponseEntity<LoginResponseDTO> registrazione(@Valid @RequestBody RegistrazioneRequestDTO request) {
@@ -58,7 +58,7 @@ public class AuthController {
      * @param request DTO con username e password
      * @return LoginResponseDTO con access token, refresh token e dati utente
      * @throws InvalidCredentialsException se username o password non sono corretti
-     * @throws ResourceNotFoundException se l'utente non esiste
+     * @throws ResourceNotFoundException   se l'utente non esiste
      */
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO request) {
@@ -90,7 +90,7 @@ public class AuthController {
      * POST /api/auth/logout
      * Effettua il logout invalidando tutti i refresh token dell'utente
      *
-     *  Richiede autenticazione (access token nell'header Authorization)
+     * Richiede autenticazione (access token nell'header Authorization)
      *
      * @param user Utente autenticato (iniettato automaticamente)
      * @return Messaggio di conferma
@@ -110,7 +110,8 @@ public class AuthController {
      * Richiede il reset della password.
      * <p>
      * Endpoint pubblico (non richiede autenticazione).
-     * L'utente fornisce la propria email e riceve un link per resettare la password.
+     * L'utente fornisce la propria email e riceve un link per resettare la
+     * password.
      * <p>
      * Per sicurezza, restituisce sempre un messaggio di successo anche se
      * l'email non esiste nel sistema (previene user enumeration).
@@ -119,14 +120,15 @@ public class AuthController {
      * @return Messaggio di conferma
      */
     @PostMapping("/reset-password")
-    public ResponseEntity<String> requestPasswordReset(@Valid @RequestBody PasswordResetRequestDTO request) {
+    public ResponseEntity<java.util.Map<String, String>> requestPasswordReset(
+            @Valid @RequestBody PasswordResetRequestDTO request) {
         log.debug("POST /api/auth/reset-password - Email: {}", request.getEmail());
 
         passwordResetService.requestPasswordReset(request.getEmail());
 
         // Messaggio generico per sicurezza (non rivela se l'email esiste)
-        return ResponseEntity.ok(
-                "Se l'email fornita è registrata, riceverai un link per resettare la password.");
+        return ResponseEntity.ok(java.util.Map.of(
+                "message", "Se l'email fornita è registrata, riceverai un link per resettare la password."));
     }
 
     /**
@@ -146,12 +148,14 @@ public class AuthController {
      * @throws InvalidInputException se il token è invalido o la password non valida
      */
     @PostMapping("/confirm-reset-password")
-    public ResponseEntity<String> confirmPasswordReset(@Valid @RequestBody PasswordResetConfirmDTO request) {
+    public ResponseEntity<java.util.Map<String, String>> confirmPasswordReset(
+            @Valid @RequestBody PasswordResetConfirmDTO request) {
         log.debug("POST /api/auth/confirm-reset-password - Token presente");
 
         passwordResetService.confirmPasswordReset(request.getToken(), request.getNewPassword());
 
-        return ResponseEntity.ok("Password resettata con successo. Ora puoi effettuare il login.");
+        return ResponseEntity.ok(java.util.Map.of(
+                "message", "Password resettata con successo. Ora puoi effettuare il login."));
     }
 
     /**

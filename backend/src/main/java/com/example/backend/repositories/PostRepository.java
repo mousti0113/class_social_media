@@ -80,6 +80,20 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     long countByUserId(@Param("userId") Long userId);
 
     /**
+     * Carica un post con l'autore già caricato (JOIN FETCH).
+     * Utile per evitare LazyInitializationException in contesti async.
+     * 
+     * @param postId L'ID del post
+     * @return Optional contenente il post con autore, o empty se non trovato
+     */
+    @Query("""
+            SELECT p FROM Post p
+            LEFT JOIN FETCH p.user
+            WHERE p.id = :postId
+            """)
+    Optional<Post> findByIdWithUser(@Param("postId") Long postId);
+
+    /**
      * Trova i post più recenti di un utente specifico, visibili per l'utente che
      * sta guardando.
      * Questa query è diversa da

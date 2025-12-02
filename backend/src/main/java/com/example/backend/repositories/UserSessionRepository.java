@@ -12,6 +12,7 @@ import com.example.backend.models.UserSession;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public interface UserSessionRepository extends JpaRepository<UserSession, Long> {
@@ -56,4 +57,11 @@ public interface UserSessionRepository extends JpaRepository<UserSession, Long> 
     @Modifying
     @Query("DELETE FROM UserSession us WHERE us.lastActivity < :threshold")
     void deleteInactiveSessions(@Param("threshold") LocalDateTime threshold);
+
+    /**
+     * Ottiene tutti gli ID degli utenti attualmente online.
+     * Usato per ottimizzazione batch invece di query singole per ogni utente.
+     */
+    @Query("SELECT DISTINCT us.user.id FROM UserSession us WHERE us.isOnline = true")
+    Set<Long> findAllOnlineUserIds();
 }

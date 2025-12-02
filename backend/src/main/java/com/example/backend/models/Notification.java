@@ -13,7 +13,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(callSuper = true, exclude = {"user", "triggeredByUser", "relatedPost", "relatedComment", "relatedMessage"})
 @ToString(exclude = {"user", "triggeredByUser", "relatedPost", "relatedComment", "relatedMessage"})
 public class Notification extends BaseEntity {
     

@@ -16,7 +16,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(callSuper = true, exclude = {"sender", "receiver"})
 @ToString(exclude = {"sender", "receiver"})
 public class DirectMessage extends BaseEntity {
     

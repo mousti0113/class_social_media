@@ -59,12 +59,18 @@ public class Post extends BaseEntity {
     // Helper method per verificare se un utente ha messo like
     @Transient
     public boolean isLikedByUser(Long userId) {
+        if (userId == null) {
+            return false;
+        }
         return likes.stream().anyMatch(like -> like.getUser().getId().equals(userId));
     }
     
     // Helper method per verificare se è nascosto per un utente
     @Transient
     public boolean isHiddenForUser(Long userId) {
+        if (userId == null) {
+            return false;
+        }
         return hiddenByUsers.stream().anyMatch(hp -> hp.getUser().getId().equals(userId));
     }
 }

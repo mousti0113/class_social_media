@@ -3,10 +3,11 @@ package com.example.backend.listeners;
 import com.example.backend.events.NotificationCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * Listener per gli eventi WebSocket.
@@ -34,9 +35,10 @@ public class NotificationWebSocketListener {
      * Gestisce l'invio di notifiche via WebSocket quando viene creata una notifica.
      * <p>
      * Questo listener:
-     * 1. Viene eseguito in modo asincrono (grazie a @Async)
-     * 2. Riceve l'evento con i dati della notifica
-     * 3. Invia la notifica via WebSocket all'utente destinatario
+     * 1. Attende che la transazione sia committata (AFTER_COMMIT)
+     * 2. Viene eseguito in modo asincrono (grazie a @Async)
+     * 3. Riceve l'evento con i dati della notifica
+     * 4. Invia la notifica via WebSocket all'utente destinatario
      * <p>
      * Se l'invio fallisce (es. utente non connesso), l'errore viene loggato
      * ma non blocca il sistema. La notifica rimane comunque salvata nel DB.
@@ -44,7 +46,7 @@ public class NotificationWebSocketListener {
      * @param event L'evento contenente username e notifica da inviare
      */
     @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleNotificationCreated(NotificationCreatedEvent event) {
         log.debug("Evento NotificationCreatedEvent ricevuto per utente: {}",
                 event.getUsername());

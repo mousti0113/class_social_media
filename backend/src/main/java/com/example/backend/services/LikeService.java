@@ -1,6 +1,7 @@
 package com.example.backend.services;
 
 import com.example.backend.dtos.response.UserSummaryDTO;
+import com.example.backend.events.PostLikedEvent;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.mappers.UserMapper;
 import com.example.backend.models.Like;
@@ -11,8 +12,10 @@ import com.example.backend.repositories.PostRepository;
 import com.example.backend.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +42,7 @@ public class LikeService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     private final NotificationService notificationService;
     private static final String ENTITY_POST = "Post";
@@ -86,6 +90,11 @@ public class LikeService {
             // Like esisteva ed è stato rimosso
             postRepository.updateLikesCount(postId, -1);
             log.info("Like rimosso - Post ID: {}, Utente: {}", postId, user.getUsername());
+            
+            // Pubblica evento per broadcast real-time
+            int newLikesCount = post.getLikesCount() - 1;
+            eventPublisher.publishEvent(new PostLikedEvent(postId, newLikesCount, userId, false));
+            
             return false;
         } else {
             // Like non esisteva, proviamo ad aggiungerlo
@@ -108,6 +117,11 @@ public class LikeService {
                 }
 
                 log.info("Like aggiunto - Post ID: {}, Utente: {}", postId, user.getUsername());
+                
+                // Pubblica evento per broadcast real-time
+                int newLikesCount = post.getLikesCount() + 1;
+                eventPublisher.publishEvent(new PostLikedEvent(postId, newLikesCount, userId, true));
+                
                 return true;
 
             } catch (DataIntegrityViolationException e) {
@@ -162,8 +176,9 @@ public class LikeService {
         log.debug("Trovati {} utenti che hanno messo like al post ID: {}",
                 users.getTotalElements(), postId);
 
-        // Converte in DTO
-        return users.map(userMapper::toUtenteSummaryDTO);
+        // Ottimizzazione: carica tutti gli utenti online in una singola query
+        Set<Long> onlineUserIds = userMapper.getOnlineUserIds();
+        return users.map(user -> userMapper.toUtenteSummaryDTO(user, onlineUserIds));
     }
 
 

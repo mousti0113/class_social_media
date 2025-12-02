@@ -33,7 +33,7 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${spring.mail.username:noreply@ClassConnect.com}")
+    @Value("${spring.mail.username:noreply@beetUs.com}")
     private String fromEmail;
 
     @Value("${app.frontend.url:http://localhost:4200}")
@@ -57,9 +57,9 @@ public class EmailService {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
             message.setTo(recipientEmail);
-            message.setSubject("Reset Password - ClassConnect");
+            message.setSubject("Reset Password - beetUs");
 
-            String resetUrl = frontendUrl + "/reset-password?token=" + resetToken;
+            String resetUrl = frontendUrl + "/auth/reset-password?token=" + resetToken;
 
             String emailBody = String.format("""
                 Ciao %s,
@@ -75,13 +75,13 @@ public class EmailService {
                 La tua password rimarrà invariata.
 
                 Cordiali saluti,
-                Il developer di ClassConnect.
+                Il developer di beetUs - MousTech.
                 """, username, resetUrl);
 
             message.setText(emailBody);
 
             mailSender.send(message);
-            log.info("Email reset password inviata con successo a: {}", recipientEmail);
+            log.info("Email reset password inviata con successo a: {} - con url:{}", recipientEmail,resetUrl);
 
         } catch (Exception e) {
             log.error("Errore invio email a {}: {}", recipientEmail, e.getMessage(), e);
@@ -107,12 +107,12 @@ public class EmailService {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
             message.setTo(recipientEmail);
-            message.setSubject("Benvenuto su ClassConnect!");
+            message.setSubject("Benvenuto su beetUs!");
 
             String emailBody = String.format("""
                 Ciao %s!
 
-                Benvenuto/a su ClassConnect!
+                Benvenuto/a su beetUs!
 
                 La tua registrazione è stata completata con successo.
                 Ora puoi accedere e iniziare a interagire con la tua classe.
@@ -126,7 +126,7 @@ public class EmailService {
 
                 Buon divertimento!
 
-                Il developer di ClassConnect.
+                Il developer di beetUs - MousTech.
                 """, username);
 
             message.setText(emailBody);
@@ -156,7 +156,7 @@ public class EmailService {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
             message.setTo(recipientEmail);
-            message.setSubject("Password Modificata - Social Media");
+            message.setSubject("Password Modificata - beetUs");
 
             String emailBody = String.format("""
                 Ciao %s,
@@ -164,7 +164,7 @@ public class EmailService {
                 La tua password è stata modificata con successo.
 
                 Cordiali saluti,
-                Il developer di ClassConnect.
+                Il developer di beetUs - MousTech.
                 """, username);
 
             message.setText(emailBody);

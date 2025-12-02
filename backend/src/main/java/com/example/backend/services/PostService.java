@@ -7,6 +7,8 @@ import com.example.backend.dtos.response.PostResponseDTO;
 import com.example.backend.events.DeleteMentionsEvent;
 import com.example.backend.events.MentionsToProcessEvent;
 import com.example.backend.events.PostCreatedEvent;
+import com.example.backend.events.PostDeletedEvent;
+import com.example.backend.events.PostUpdatedEvent;
 import com.example.backend.exception.InvalidInputException;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.exception.UnauthorizedException;
@@ -26,6 +28,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Set;
+
 /**
  * Service per la gestione dei post.
  * Gestisce tutte le operazioni CRUD sui post, il feed, la ricerca e le funzionalità di nascondere/mostrare.
@@ -40,6 +44,7 @@ public class PostService {
     private final HiddenPostRepository hiddenPostRepository;
     private final PostMapper postMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final ImageService imageService;
 
     /**
      * Crea un nuovo post.
@@ -165,6 +170,10 @@ public class PostService {
             log.debug("Evento MentionsToProcessEvent (update) pubblicato per post ID: {}", postId);
         }
 
+        // Pubblica evento per broadcast real-time della modifica
+        eventPublisher.publishEvent(new PostUpdatedEvent(postId));
+        log.debug("Evento PostUpdatedEvent pubblicato per post ID: {}", postId);
+
         return postMapper.toPostResponseDTO(post, userId);
     }
 
@@ -194,6 +203,18 @@ public class PostService {
             throw new UnauthorizedException("Non hai i permessi per eliminare questo post");
         }
 
+        // Elimina l'immagine da Cloudinary se presente
+        if (post.getImageUrl() != null && !post.getImageUrl().isEmpty()) {
+            try {
+                log.debug("Eliminazione immagine da Cloudinary - URL: {}", post.getImageUrl());
+                imageService.deleteImage(post.getImageUrl(), userId);
+                log.info("Immagine eliminata con successo da Cloudinary");
+            } catch (Exception e) {
+                log.error("Errore durante l'eliminazione dell'immagine da Cloudinary: {}", e.getMessage());
+                // Continua comunque con l'eliminazione del post
+            }
+        }
+
         // Soft delete: marca il post come cancellato invece di eliminarlo fisicamente
         post.setIsDeletedByAuthor(true);
         postRepository.save(post);
@@ -201,6 +222,10 @@ public class PostService {
         // Pubblica evento per eliminazione menzioni asincrona
         eventPublisher.publishEvent(new DeleteMentionsEvent(MentionableType.POST, postId));
         log.debug("Evento DeleteMentionsEvent pubblicato per post ID: {}", postId);
+
+        // Pubblica evento per broadcast real-time della cancellazione
+        eventPublisher.publishEvent(new PostDeletedEvent(postId));
+        log.debug("Evento PostDeletedEvent pubblicato per post ID: {}", postId);
 
         log.info("Post eliminato con successo (soft delete) - ID: {}", postId);
     }
@@ -259,9 +284,11 @@ public class PostService {
 
         log.debug("Feed caricato: {} post trovati per utente ID: {}", posts.getTotalElements(), userId);
 
-        // Converte ogni post in DTO
+        // Ottimizzazione: carica tutti gli utenti online in una singola query
+        Set<Long> onlineUserIds = postMapper.getOnlineUserIds();
 
-        return posts.map(post -> postMapper.toPostResponseDTO(post, userId));
+        // Converte ogni post in DTO usando il set precaricato
+        return posts.map(post -> postMapper.toPostResponseDTO(post, userId, onlineUserIds));
     }
 
     /**

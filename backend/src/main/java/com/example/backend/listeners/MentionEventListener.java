@@ -6,9 +6,10 @@ import com.example.backend.models.MentionableType;
 import com.example.backend.services.MentionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * Listener per gli eventi relativi alle menzioni.
@@ -22,8 +23,8 @@ import org.springframework.stereotype.Component;
  * - Creazione dei record nel database
  * - Invio di notifiche agli utenti menzionati
  * <p>
- * Eseguito in modo asincrono per non bloccare le transazioni di creazione/modifica
- * di post e commenti.
+ * Usa @TransactionalEventListener con AFTER_COMMIT per garantire che
+ * il contenuto sia già stato salvato nel database prima di processarlo.
  */
 @Component
 @RequiredArgsConstructor
@@ -36,11 +37,13 @@ public class MentionEventListener {
      * Gestisce il processing delle menzioni quando viene creato o modificato un contenuto.
      * <p>
      * Questo listener:
-     * 1. Viene eseguito in modo asincrono (grazie a @Async)
-     * 2. Chiama MentionService per processare le menzioni
-     * 3. Se è un aggiornamento, prima elimina le vecchie menzioni
+     * 1. Attende che la transazione sia committata (AFTER_COMMIT)
+     * 2. Viene eseguito in modo asincrono (grazie a @Async)
+     * 3. Chiama MentionService per processare le menzioni
+     * 4. Se è un aggiornamento, prima elimina le vecchie menzioni
      * <p>
      * Vantaggi:
+     * - Il contenuto esiste già nel database quando il listener viene eseguito
      * - La transazione originale (creazione post/commento) non viene bloccata
      * - Il parsing del contenuto e le notifiche avvengono in background
      * - Eventuali errori non compromettono la creazione del contenuto
@@ -48,7 +51,7 @@ public class MentionEventListener {
      * @param event L'evento contenente i dati del contenuto da processare
      */
     @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleMentionsToProcess(MentionsToProcessEvent event) {
         log.info("Evento MentionsToProcessEvent ricevuto - Tipo: {}, ID: {}, Update: {}",
                 event.getMentionableType(), event.getMentionableId(), event.isUpdate());
@@ -99,17 +102,19 @@ public class MentionEventListener {
      * Gestisce l'eliminazione delle menzioni quando un contenuto viene eliminato.
      * <p>
      * Questo listener:
-     * 1. Viene eseguito in modo asincrono (grazie a @Async)
-     * 2. Elimina tutte le menzioni associate al contenuto eliminato
+     * 1. Attende che la transazione sia committata (AFTER_COMMIT)
+     * 2. Viene eseguito in modo asincrono (grazie a @Async)
+     * 3. Elimina tutte le menzioni associate al contenuto eliminato
      * <p>
      * L'eliminazione asincrona garantisce che:
+     * - L'eliminazione del contenuto è già stata committata
      * - La transazione di soft delete non viene bloccata
      * - Eventuali errori non compromettono l'eliminazione del contenuto
      *
      * @param event L'evento contenente i dati del contenuto eliminato
      */
     @Async
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleDeleteMentions(DeleteMentionsEvent event) {
         log.info("Evento DeleteMentionsEvent ricevuto - Tipo: {}, ID: {}",
                 event.getMentionableType(), event.getMentionableId());

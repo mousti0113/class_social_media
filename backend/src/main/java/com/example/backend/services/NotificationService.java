@@ -318,17 +318,28 @@ public class NotificationService {
      * <p>
      * OTTIMIZZAZIONI:
      * - Usa saveAll() invece di save() in loop per ridurre le query DB
-     * - Non è @Transactional perché viene chiamato in modo asincrono
+     * - È @Transactional per garantire una sessione Hibernate attiva nel thread async
      * - Gestisce errori WebSocket senza bloccare il salvataggio
      *
      * @param authorId L'ID dell'autore del post
      * @param postId   L'ID del post appena creato
      */
+    @Transactional
     public void creaNotificheNuovoPost(Long authorId, Long postId) {
         log.info("Creazione notifiche nuovo post - Autore ID: {}, Post ID: {}", authorId, postId);
 
-        User author = userRepository.getReferenceById(authorId);
-        Post post = postRepository.getReferenceById(postId);
+        // Usa findById invece di getReferenceById per caricare i dati subito
+        // Questo evita LazyInitializationException nel thread async
+        User author = userRepository.findById(authorId).orElse(null);
+        Post post = postRepository.findById(postId).orElse(null);
+        
+        if (author == null || post == null) {
+            log.warn("Autore o post non trovato - AuthorId: {}, PostId: {}", authorId, postId);
+            return;
+        }
+
+        // Carica il fullName subito mentre la sessione è attiva
+        String authorFullName = author.getFullName();
 
         // Trova tutti gli utenti attivi TRANNE l'autore
         List<User> allUsers = userRepository.findByIsActiveTrue();
@@ -341,7 +352,7 @@ public class NotificationService {
                         .type(NotificationType.NEW_POST)
                         .triggeredByUser(author)
                         .relatedPost(post)
-                        .content(String.format("%s ha pubblicato un nuovo post", author.getFullName()))
+                        .content(String.format("%s ha pubblicato un nuovo post", authorFullName))
                         .actionUrl("/posts/" + postId)
                         .isRead(false)
                         .build())

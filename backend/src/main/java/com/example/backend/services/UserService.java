@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Service per la gestione degli utenti.
@@ -192,7 +193,9 @@ public class UserService {
 
         log.debug("Trovati {} utenti con termine '{}'", users.getTotalElements(), searchTerm);
 
-        return users.map(userMapper::toUtenteSummaryDTO);
+        // Ottimizzazione: carica tutti gli utenti online in una singola query
+        Set<Long> onlineUserIds = userMapper.getOnlineUserIds();
+        return users.map(user -> userMapper.toUtenteSummaryDTO(user, onlineUserIds));
     }
 
     /**
@@ -208,7 +211,9 @@ public class UserService {
 
         Page<User> users = userRepository.findAllActiveUsers(pageable);
 
-        return users.map(userMapper::toUtenteSummaryDTO);
+        // Ottimizzazione: carica tutti gli utenti online in una singola query
+        Set<Long> onlineUserIds = userMapper.getOnlineUserIds();
+        return users.map(user -> userMapper.toUtenteSummaryDTO(user, onlineUserIds));
     }
 
     /**
@@ -381,9 +386,8 @@ public class UserService {
         Pageable limit10 = PageRequest.of(0, 10);
         List<User> users = userRepository.findByUsernameStartingWith(prefix.trim(), limit10);
 
-        return users.stream()
-                .map(userMapper::toUtenteSummaryDTO)
-                .toList();
+        // Ottimizzazione: usa il metodo batch
+        return userMapper.toUtenteSummaryDTOList(users);
     }
 
     /**
