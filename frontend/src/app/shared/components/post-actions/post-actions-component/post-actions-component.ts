@@ -1,4 +1,4 @@
-import { Component, input, output, signal, computed, inject } from '@angular/core';
+import { Component, input, output, signal, computed, inject, effect } from '@angular/core';
 import { Router } from '@angular/router';
 import { LucideAngularModule, Heart, MessageCircle } from 'lucide-angular';
 
@@ -72,6 +72,23 @@ export class PostActionsComponent {
   readonly localHasLiked = signal<boolean | null>(null);
   readonly localLikesCount = signal<number | null>(null);
   readonly isLikeLoading = signal(false);
+
+  constructor() {
+    // Sincronizza il conteggio like quando cambia dall'esterno (es. WebSocket update)
+    // Manteniamo lo stato hasLiked dell'utente, ma aggiorniamo il conteggio
+    effect(() => {
+      const parentLikesCount = this.likesCount();
+      const localCount = this.localLikesCount();
+      
+      // Se il parent ha un valore diverso dal nostro stato locale (e non stiamo caricando),
+      // significa che è arrivato un update esterno (WebSocket) - aggiorniamo solo il conteggio
+      if (localCount !== null && !this.isLikeLoading() && parentLikesCount !== localCount) {
+        console.log('[PostActions] Sincronizzazione conteggio con update esterno:', parentLikesCount);
+        // Aggiorna solo il conteggio, NON lo stato hasLiked (quello dell'utente resta invariato)
+        this.localLikesCount.set(parentLikesCount);
+      }
+    });
+  }
 
 
   /**

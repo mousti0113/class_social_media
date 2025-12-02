@@ -3,7 +3,7 @@
   @if (showLike()) {
     <button
       type="button"
-      class="flex items-center gap-2 text-sm transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+      class="flex items-center gap-2 text-sm transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 group"
       [class]="effectiveHasLiked()
         ? 'text-red-500 hover:text-red-600'
         : 'text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400'"
@@ -15,7 +15,9 @@
       <lucide-icon
         [img]="HeartIcon"
         [size]="20"
-        [class.fill-current]="effectiveHasLiked()"
+        class="heart-icon transition-all duration-200"
+        [class.heart-filled]="effectiveHasLiked()"
+        [class.group-hover:scale-110]="!isLikeLoading()"
       ></lucide-icon>
       <span class="font-medium">{{ effectiveLikesCount() }}</span>
     </button>

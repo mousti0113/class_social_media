@@ -62,4 +62,24 @@ export class AuthStore {
     const currentUserId = this._currentUser()?.id;
     return currentUserId !== null && currentUserId === userId;
   }
+  /**
+   * Imposta un utente mock per scopi di test e sviluppo
+   * @param isAdmin Se true, l'utente avrà privilegi di amministratore
+   */
+  setMockUser(isAdmin: boolean): void {
+    const mockUser: UserResponseDTO = {
+      id: 1, // Corrisponde all'autore "Mario Rossi" in app.ts
+      username: 'mario_rossi',
+      email: 'mario.rossi@example.com',
+      nomeCompleto: 'Mario Rossi',
+      bio: 'Appassionato di tecnologia e sviluppo web. Benvenuti nel mio profilo!',
+      profilePictureUrl: null, // O un URL valido se preferisci
+      isAdmin: isAdmin,
+      isActive: true,
+      lastSeen: new Date().toISOString(),
+      isOnline: true,
+    };
+
+    this._currentUser.set(mockUser);
+  }
 }

@@ -181,8 +181,9 @@ body {
   line-height: 1.5;
 }
 
-/* Dark mode body */
-body.dark {
+/* Dark mode body - applica quando .dark è su html o parent */
+.dark body,
+html.dark body {
   background-color: var(--color-background-dark);
   color: var(--color-text-dark);
 }
@@ -314,11 +315,13 @@ body.dark {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
+
 /* Esclude input e textarea (gestiti dai componenti) */
 input:focus-visible,
 textarea:focus-visible {
   outline: none;
 }
+
 /* ============================================
    SELECTION STYLES
    ============================================ */

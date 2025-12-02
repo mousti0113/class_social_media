@@ -17,6 +17,6 @@ export const appConfig: ApplicationConfig = {
     // Configurazione HTTP client con interceptors
     // // 1. authInterceptor viene eseguito PER PRIMO (aggiunge il token)
     // 2. errorInterceptor viene eseguito PER SECONDO (gestisce errori e refresh)
-    provideHttpClient(withInterceptors([authInterceptor, errorInterceptor])),
+    provideHttpClient(withInterceptors([ errorInterceptor,authInterceptor])),
   ],
 };

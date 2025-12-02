@@ -1,18 +1,28 @@
-<article 
-  class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-shadow hover:shadow-md"
+<article
+  class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-border-light dark:border-border-dark overflow-hidden transition-shadow hover:shadow-md"
   [class.cursor-pointer]="clickable()"
   (click)="goToPost()"
+  (keyup.enter)="goToPost()"
+  [attr.tabindex]="clickable() ? 0 : null"
+  [attr.role]="clickable() ? 'button' : null"
 >
   <!-- Header -->
   <header class="flex items-center justify-between p-4 pb-0">
     <!-- Autore -->
-    <div class="flex items-center gap-3 min-w-0" (click)="goToAuthor($event)">
+    <div
+      class="flex items-center gap-3 min-w-0 cursor-pointer"
+      (click)="goToAuthor($event)"
+      (keyup.enter)="goToAuthor($event)"
+      tabindex="0"
+      role="button"
+      [attr.aria-label]="'Vai al profilo di ' + post().autore.nomeCompleto"
+    >
       <app-avatar
         [src]="post().autore.profilePictureUrl"
         [alt]="post().autore.nomeCompleto"
         [name]="post().autore.nomeCompleto"
         size="md"
-        [status]="post().autore.isOnline ? 'online' : 'offline'"
+        [status]="post().autore.isOnline ? 'online' : 'none'"
         class="shrink-0 cursor-pointer"
       />
 
@@ -29,7 +39,11 @@
     </div>
 
     <!-- Menu dropdown -->
-    <app-dropdown placement="bottom-end" (click)="$event.stopPropagation()">
+    <app-dropdown
+      placement="bottom-end"
+      (click)="$event.stopPropagation()"
+      (keydown)="$event.stopPropagation()"
+    >
       <!-- Trigger -->
       <div
         trigger
@@ -45,7 +59,7 @@
           <button
             type="button"
             class="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-            (click)="editPost($event)"
+            (click)="startEdit($event)"
           >
             <lucide-icon [img]="PencilIcon" [size]="16"></lucide-icon>
             Modifica
@@ -88,12 +102,59 @@
 
   <!-- Body -->
   <div class="p-4">
-    <!-- Contenuto testuale -->
-    @if (post().contenuto) {
-      <p 
-        class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words"
-        [innerHTML]="post().contenuto | highlightMention"
-      ></p>
+    <!-- Modalità visualizzazione -->
+    @if (!isEditing()) {
+      <!-- Contenuto testuale -->
+      @if (post().contenuto) {
+        <p
+          class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words"
+          [innerHTML]="post().contenuto | highlightMention"
+        ></p>
+      }
+    }
+
+    <!-- Modalità modifica -->
+    @if (isEditing()) {
+      <div class="space-y-3" (click)="$event.stopPropagation()">
+        <textarea
+          [(ngModel)]="editContent"
+          class="w-full min-h-[100px] p-3 text-gray-800 dark:text-gray-200 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          placeholder="Scrivi qualcosa..."
+          [maxlength]="MAX_CONTENT_LENGTH"
+        ></textarea>
+
+        <!-- Counter e azioni -->
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-gray-500 dark:text-gray-400">
+            {{ editContent().length }} / {{ MAX_CONTENT_LENGTH }}
+          </span>
+
+          <div class="flex gap-2">
+            <button
+              type="button"
+              class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              (click)="cancelEdit($event)"
+              [disabled]="isSaving()"
+            >
+              <lucide-icon [img]="XIcon" [size]="16"></lucide-icon>
+              Annulla
+            </button>
+            <button
+              type="button"
+              class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              (click)="saveEdit($event)"
+              [disabled]="isSaving() || editContent().trim().length === 0"
+            >
+              @if (isSaving()) {
+                <span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              } @else {
+                <lucide-icon [img]="CheckIcon" [size]="16"></lucide-icon>
+              }
+              Salva
+            </button>
+          </div>
+        </div>
+      </div>
     }
 
     <!-- Immagine -->

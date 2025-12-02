@@ -16,6 +16,7 @@ import {
 } from '../../../models';
 import { TokenService } from './token-service';
 import { AuthStore } from '../../stores/auth-store';
+import { WebsocketService } from '../../services/websocket-service';
 
 @Injectable({
   providedIn: 'root',
@@ -25,6 +26,7 @@ export class AuthService {
   private readonly router = inject(Router);
   private readonly tokenService = inject(TokenService);
   private readonly authStore = inject(AuthStore);
+  private readonly websocketService = inject(WebsocketService);
 
   private readonly API_URL = `${environment.apiUrl}/auth`;
 
@@ -124,7 +126,7 @@ export class AuthService {
    */
   validateResetToken(token: string): Observable<{ valid: boolean }> {
     return this.http.get<{ valid: boolean }>(`${this.API_URL}/validate-reset-token`, {
-      params: { token }
+      params: { token },
     });
   }
 
@@ -173,6 +175,8 @@ export class AuthService {
       if (userFromToken) {
         // Aggiorna lo store con l'utente recuperato
         this.authStore.setUser(userFromToken);
+        // Connetti WebSocket se utente già loggato (reload pagina)
+        this.websocketService.connect();
       } else {
         // Token non valido, effettua logout
         this.handleLogoutSuccess();
@@ -189,12 +193,15 @@ export class AuthService {
 
     // Aggiorna lo store
     this.authStore.setUser(response.user);
+    // Connetti WebSocket dopo login
+    this.websocketService.connect();
   }
 
   /**
    * Gestisce il successo del logout
    */
   private handleLogoutSuccess(): void {
+    this.websocketService.disconnect();
     // Rimuove i token
     this.tokenService.clearTokens();
 

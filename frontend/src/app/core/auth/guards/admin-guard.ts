@@ -23,5 +23,5 @@ export const adminGuard: CanActivateFn = () => {
   }
 
   // Reindirizza alla home se non è admin
-  return router.createUrlTree(['/home']);
+  return router.createUrlTree(['/']);
 };

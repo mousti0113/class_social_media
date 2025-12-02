@@ -1,6 +1,7 @@
-import { Component, input, output, computed, inject } from '@angular/core';
+import { Component, input, output, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import {
   LucideAngularModule,
   Ellipsis,
@@ -8,6 +9,8 @@ import {
   Trash2,
   EyeOff,
   Flag,
+  X,
+  Check,
 } from 'lucide-angular';
 
 import { PostResponseDTO } from '../../../../models';
@@ -25,6 +28,7 @@ import { PostService } from '../../../../core/api/post-service';
   selector: 'app-post-card-component',
   imports: [
     CommonModule,
+    FormsModule,
     LucideAngularModule,
     AvatarComponent,
     DropdownComponent,
@@ -48,6 +52,8 @@ export class PostCardComponent {
   readonly Trash2Icon = Trash2;
   readonly EyeOffIcon = EyeOff;
   readonly FlagIcon = Flag;
+  readonly XIcon = X;
+  readonly CheckIcon = Check;
 
   /**
    * Dati del post da visualizzare
@@ -82,6 +88,18 @@ export class PostCardComponent {
    */
   readonly hidden = output<number>();
 
+  /**
+   * Stato di modifica
+   */
+  readonly isEditing = signal<boolean>(false);
+  readonly editContent = signal<string>('');
+  readonly isSaving = signal<boolean>(false);
+
+  /**
+   * Lunghezza massima contenuto
+   */
+  readonly MAX_CONTENT_LENGTH = 5000;
+
 
   /**
    * Verifica se l'utente corrente è l'autore del post
@@ -108,7 +126,7 @@ export class PostCardComponent {
    * Naviga al dettaglio del post
    */
   goToPost(): void {
-    if (this.clickable()) {
+    if (this.clickable() && !this.isEditing()) {
       this.router.navigate(['/post', this.post().id]);
     }
   }
@@ -122,14 +140,56 @@ export class PostCardComponent {
   }
 
   /**
-   * Modifica post
-   * TODO: Implementare form di modifica
+   * Attiva la modalità modifica
    */
-  editPost(event: Event): void {
+  startEdit(event: Event): void {
     event.stopPropagation();
-    // Per ora mostra un messaggio, poi implementeremo il form di modifica
-    this.toastService.info('Funzionalità modifica in arrivo');
-    // Quando sarà pronto: this.router.navigate(['/post', this.post().id, 'edit']);
+    this.editContent.set(this.post().contenuto || '');
+    this.isEditing.set(true);
+  }
+
+  /**
+   * Annulla la modifica
+   */
+  cancelEdit(event: Event): void {
+    event.stopPropagation();
+    this.isEditing.set(false);
+    this.editContent.set('');
+  }
+
+  /**
+   * Salva le modifiche
+   */
+  saveEdit(event: Event): void {
+    event.stopPropagation();
+
+    const newContent = this.editContent().trim();
+
+    // Validazione
+    if (!newContent && !this.post().imageUrl) {
+      this.toastService.error('Il post deve contenere testo o un\'immagine');
+      return;
+    }
+
+    if (newContent.length > this.MAX_CONTENT_LENGTH) {
+      this.toastService.error(`Il contenuto non può superare i ${this.MAX_CONTENT_LENGTH} caratteri`);
+      return;
+    }
+
+    this.isSaving.set(true);
+
+    this.postService.updatePost(this.post().id, { contenuto: newContent }).subscribe({
+      next: (updatedPost) => {
+        this.isSaving.set(false);
+        this.isEditing.set(false);
+        this.toastService.success('Post modificato con successo');
+        this.edited.emit(updatedPost);
+      },
+      error: () => {
+        this.isSaving.set(false);
+        this.toastService.error('Errore nella modifica del post');
+      },
+    });
   }
 
   /**

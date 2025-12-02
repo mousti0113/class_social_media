@@ -20,11 +20,15 @@ export class WebsocketService {
   public readonly connected = signal<boolean>(false);
 
   // Subjects per i vari tipi di messaggi in arrivo
-  private notificationsSubject = new Subject<any>();
-  private messagesSubject = new Subject<any>();
-  private typingSubject = new Subject<TypingIndicator>();
-  private errorsSubject = new Subject<WebSocketError>();
-  private announcementsSubject = new Subject<any>();
+  private readonly notificationsSubject = new Subject<any>();
+  private readonly messagesSubject = new Subject<any>();
+  private readonly typingSubject = new Subject<TypingIndicator>();
+  private readonly errorsSubject = new Subject<WebSocketError>();
+  private readonly announcementsSubject = new Subject<any>();
+  private readonly newPostsSubject = new Subject<any>();
+  private readonly postUpdatedSubject = new Subject<any>();
+  private readonly postDeletedSubject = new Subject<any>();
+  private readonly postLikedSubject = new Subject<PostLikeUpdate>();
 
   // Observables pubblici per sottoscrizioni
   public notifications$ = this.notificationsSubject.asObservable();
@@ -32,6 +36,10 @@ export class WebsocketService {
   public typing$ = this.typingSubject.asObservable();
   public errors$ = this.errorsSubject.asObservable();
   public announcements$ = this.announcementsSubject.asObservable();
+  public newPosts$ = this.newPostsSubject.asObservable();
+  public postUpdated$ = this.postUpdatedSubject.asObservable();
+  public postDeleted$ = this.postDeletedSubject.asObservable();
+  public postLiked$ = this.postLikedSubject.asObservable();
 
   /**
    * Connette al WebSocket server
@@ -57,7 +65,7 @@ export class WebsocketService {
 
     this.client = new Client({
       // Usa SockJS come trasporto (fallback per browser senza WebSocket nativo)
-      webSocketFactory: () => new SockJS(`${environment.apiUrl}/ws`),
+      webSocketFactory: () => new SockJS(`${environment.wsUrl}?token=${token}`),
 
       // Header di connessione (include token JWT)
       connectHeaders: {
@@ -195,6 +203,34 @@ export class WebsocketService {
       this.announcementsSubject.next(announcement);
     });
 
+    // Sottoscrizione ai nuovi post (broadcast a tutti gli utenti)
+    this.client.subscribe('/topic/posts', (message: IMessage) => {
+      const post = JSON.parse(message.body);
+      console.log('[WebSocket] Nuovo post ricevuto:', post);
+      this.newPostsSubject.next(post);
+    });
+
+    // Sottoscrizione ai post aggiornati
+    this.client.subscribe('/topic/posts/updated', (message: IMessage) => {
+      const post = JSON.parse(message.body);
+      console.log('[WebSocket] Post aggiornato ricevuto:', post);
+      this.postUpdatedSubject.next(post);
+    });
+
+    // Sottoscrizione ai post cancellati
+    this.client.subscribe('/topic/posts/deleted', (message: IMessage) => {
+      const data = JSON.parse(message.body);
+      console.log('[WebSocket] Post cancellato:', data);
+      this.postDeletedSubject.next(data);
+    });
+
+    // Sottoscrizione agli aggiornamenti like
+    this.client.subscribe('/topic/posts/liked', (message: IMessage) => {
+      const likeUpdate = JSON.parse(message.body);
+      console.log('[WebSocket] Like update ricevuto:', likeUpdate);
+      this.postLikedSubject.next(likeUpdate);
+    });
+
     console.log('[WebSocket] Sottoscrizioni attive');
   }
 
@@ -278,4 +314,21 @@ export interface WebSocketError {
 
   /** Timestamp dell'errore */
   timestamp: number;
+}
+
+/**
+ * Interfaccia per aggiornamenti like sui post
+ */
+export interface PostLikeUpdate {
+  /** ID del post */
+  postId: number;
+
+  /** Nuovo conteggio dei like */
+  likesCount: number;
+
+  /** True se è stato aggiunto un like, false se rimosso */
+  liked: boolean;
+
+  /** Tipo dell'aggiornamento */
+  type: 'like_update';
 }
