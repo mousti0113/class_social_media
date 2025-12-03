@@ -88,19 +88,22 @@ public class AuthController {
 
     /**
      * POST /api/auth/logout
-     * Effettua il logout invalidando tutti i refresh token dell'utente
+     * Effettua il logout invalidando il refresh token specificato.
+     * 
+     * Endpoint pubblico (il client ha già pulito i token localmente)
+     * Accetta un body con il refresh token da invalidare.
      *
-     * Richiede autenticazione (access token nell'header Authorization)
-     *
-     * @param user Utente autenticato (iniettato automaticamente)
+     * @param request DTO contenente il refresh token da invalidare
      * @return Messaggio di conferma
      */
     @PostMapping("/logout")
-    public ResponseEntity<String> logout(@CurrentUser User user) {
-        log.debug("POST /api/auth/logout - Username: {}", user.getUsername());
-
-        // Effettua il logout
-        authService.logout(user.getId());
+    public ResponseEntity<String> logout(@RequestBody(required = false) RefreshTokenRequestDTO request) {
+        if (request != null && request.getRefreshToken() != null) {
+            log.debug("POST /api/auth/logout - Invalidating refresh token");
+            authService.logoutByRefreshToken(request.getRefreshToken());
+        } else {
+            log.debug("POST /api/auth/logout - No refresh token provided, skipping");
+        }
 
         return ResponseEntity.ok("Logout effettuato con successo");
     }

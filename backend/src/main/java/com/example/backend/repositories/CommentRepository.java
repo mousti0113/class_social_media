@@ -8,9 +8,16 @@ import org.springframework.stereotype.Repository;
 import com.example.backend.models.Comment;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CommentRepository extends JpaRepository<Comment, Long> {
+
+    /**
+     * Carica un commento con il suo autore (eager loading per evitare LazyInitializationException)
+     */
+    @Query("SELECT c FROM Comment c JOIN FETCH c.user WHERE c.id = :commentId")
+    Optional<Comment> findByIdWithUser(@Param("commentId") Long commentId);
 
     // Commenti visibili per un post
     @Query("""

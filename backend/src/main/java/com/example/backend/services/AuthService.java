@@ -180,4 +180,14 @@ public class AuthService {
         refreshTokenService.eliminaRefreshTokenUtente(userId);
         log.info("Logout completato per utente ID: {}", userId);
     }
+
+    /**
+     * Effettua il logout invalidando uno specifico refresh token
+     */
+    @Transactional
+    public void logoutByRefreshToken(String refreshToken) {
+        log.info("Logout tramite refresh token");
+        refreshTokenService.eliminaRefreshToken(refreshToken);
+        log.info("Logout completato tramite refresh token");
+    }
 }

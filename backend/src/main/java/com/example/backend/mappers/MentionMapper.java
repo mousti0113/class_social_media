@@ -47,14 +47,14 @@ public class MentionMapper {
                 case POST -> {
                     Post post = postRepository.findById(mention.getMentionableId()).orElse(null);
                     if (post != null) {
-                        actionUrl = "/posts/" + post.getId();
+                        actionUrl = "/post/" + post.getId();
                         preview = truncate(post.getContent());
                     }
                 }
                 case COMMENT -> {
                     Comment comment = commentRepository.findById(mention.getMentionableId()).orElse(null);
                     if (comment != null) {
-                        actionUrl = "/posts/" + comment.getPost().getId();
+                        actionUrl = "/post/" + comment.getPost().getId();
                         preview = truncate(comment.getContent());
                     }
                 }

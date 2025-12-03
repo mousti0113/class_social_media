@@ -2,6 +2,9 @@ package com.example.backend.services;
 
 import com.example.backend.dtos.request.CreaCommentoRequestDTO;
 import com.example.backend.dtos.response.CommentResponseDTO;
+import com.example.backend.events.CommentCreatedEvent;
+import com.example.backend.events.CommentDeletedEvent;
+import com.example.backend.events.CommentUpdatedEvent;
 import com.example.backend.events.DeleteMentionsEvent;
 import com.example.backend.events.MentionsToProcessEvent;
 import com.example.backend.exception.InvalidInputException;
@@ -175,6 +178,14 @@ public class CommentService {
         log.info("Commento creato con successo - ID: {} per post ID: {} da utente: {}",
                 comment.getId(), postId, autore.getUsername());
 
+        // Pubblica evento per broadcast WebSocket
+        eventPublisher.publishEvent(new CommentCreatedEvent(
+                postId,
+                comment.getId(),
+                parentComment != null ? parentComment.getId() : null
+        ));
+        log.debug("Evento CommentCreatedEvent pubblicato per commento ID: {}", comment.getId());
+
         return commentMapper.toCommentoResponseDTO(comment);
     }
 
@@ -237,6 +248,13 @@ public class CommentService {
         ));
         log.debug("Evento MentionsToProcessEvent (update) pubblicato per commento ID: {}", commentId);
 
+        // Pubblica evento per broadcast WebSocket
+        eventPublisher.publishEvent(new CommentUpdatedEvent(
+                comment.getPost().getId(),
+                commentId
+        ));
+        log.debug("Evento CommentUpdatedEvent pubblicato per commento ID: {}", commentId);
+
         log.info("Commento modificato con successo - ID: {}", commentId);
 
         return commentMapper.toCommentoResponseDTO(comment);
@@ -287,6 +305,13 @@ public class CommentService {
         // Pubblica evento per eliminazione menzioni asincrona
         eventPublisher.publishEvent(new DeleteMentionsEvent(MentionableType.COMMENT, commentId));
         log.debug("Evento DeleteMentionsEvent pubblicato per commento ID: {}", commentId);
+
+        // Pubblica evento per broadcast WebSocket
+        eventPublisher.publishEvent(new CommentDeletedEvent(
+                comment.getPost().getId(),
+                commentId
+        ));
+        log.debug("Evento CommentDeletedEvent pubblicato per commento ID: {}", commentId);
 
         log.info("Commento eliminato con successo (soft delete) - ID: {}", commentId);
     }

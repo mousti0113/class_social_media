@@ -90,7 +90,7 @@ public class NotificationService {
                 .relatedPost(post)
                 .content(String.format("%s ha messo mi piace al tuo post",
                         triggeredBy.getFullName()))
-                .actionUrl("/posts/" + postId)
+                .actionUrl("/post/" + postId)
                 .isRead(false)
                 .build();
 
@@ -143,7 +143,7 @@ public class NotificationService {
                 .relatedComment(comment)
                 .content(String.format("%s ha commentato il tuo post",
                         triggeredBy.getFullName()))
-                .actionUrl("/posts/" + postId)
+                .actionUrl("/post/" + postId)
                 .isRead(false)
                 .build();
 
@@ -194,7 +194,7 @@ public class NotificationService {
                 .relatedComment(comment)
                 .content(String.format("%s ha risposto al tuo commento",
                         triggeredBy.getFullName()))
-                .actionUrl("/posts/" + postId)
+                .actionUrl("/post/" + postId)
                 .isRead(false)
                 .build();
 
@@ -241,13 +241,13 @@ public class NotificationService {
             case POST -> {
                 content = String.format("%s ti ha menzionato in un post",
                         triggeredBy.getFullName());
-                actionUrl = "/posts/" + relatedId;
+                actionUrl = "/post/" + relatedId;
             }
             case COMMENT -> {
                 Comment comment = commentRepository.getReferenceById(relatedId);
                 content = String.format("%s ti ha menzionato in un commento",
                         triggeredBy.getFullName());
-                actionUrl = "/posts/" + comment.getPost().getId();
+                actionUrl = "/post/" + comment.getPost().getId();
             }
             
             default -> {
@@ -353,7 +353,7 @@ public class NotificationService {
                         .triggeredByUser(author)
                         .relatedPost(post)
                         .content(String.format("%s ha pubblicato un nuovo post", authorFullName))
-                        .actionUrl("/posts/" + postId)
+                        .actionUrl("/post/" + postId)
                         .isRead(false)
                         .build())
                 .toList();
