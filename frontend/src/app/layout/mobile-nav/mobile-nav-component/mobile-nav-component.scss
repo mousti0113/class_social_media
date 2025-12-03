@@ -1,0 +1,42 @@
+// Mobile Navigation Styles
+
+:host {
+  display: contents;
+}
+
+// Safe area per dispositivi con notch (iPhone X+)
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+// Effetto tap sui link
+nav a, nav button {
+  -webkit-tap-highlight-color: transparent;
+  
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+// Animazione pulsante crea
+.create-button {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  &:active {
+    transform: scale(0.9);
+  }
+}
+
+// Badge pulsante
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.badge-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}

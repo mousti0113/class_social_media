@@ -97,11 +97,14 @@
       }
     </div>
 
-    <!-- Sidebar: Utenti online -->
-    <aside class="lg:col-span-4">
+    <!-- Sidebar: Utenti online (nascosta su mobile) -->
+    <aside class="hidden lg:block lg:col-span-4">
       <div class="lg:sticky lg:top-24">
         <app-sidebar-online-component />
       </div>
     </aside>
   </div>
 </div>
+
+<!-- Drawer utenti online per mobile -->
+<app-online-users-drawer />

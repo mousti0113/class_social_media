@@ -17,7 +17,7 @@ import { PostResponseDTO } from '../../../../models';
 import { AvatarComponent } from '../../../ui/avatar/avatar-component/avatar-component';
 import { DropdownComponent } from '../../../ui/dropdown/dropdown-component/dropdown-component';
 import { PostActionsComponent } from '../../post-actions/post-actions-component/post-actions-component';
-import { TimeAgoPipe } from '../../../pipes/time-ago.pipe';
+import { TimeAgoComponent } from '../../time-ago/time-ago-component/time-ago-component';
 import { HighlightMentionPipe } from '../../../pipes/highlight-mention.pipe';
 import { DialogService } from '../../../../core/services/dialog-service';
 import { ToastService } from '../../../../core/services/toast-service';
@@ -33,7 +33,7 @@ import { PostService } from '../../../../core/api/post-service';
     AvatarComponent,
     DropdownComponent,
     PostActionsComponent,
-    TimeAgoPipe,
+    TimeAgoComponent,
     HighlightMentionPipe,
   ],
   templateUrl: './post-card-component.html',

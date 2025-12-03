@@ -1,6 +1,6 @@
 import { Component, input, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TimeAgoPipe } from '../../../pipes/time-ago.pipe';
+import { TimeAgoComponent } from '../../time-ago/time-ago-component/time-ago-component';
 
 /**
  * Posizione della bolla (mittente = destra, destinatario = sinistra)
@@ -9,7 +9,7 @@ export type MessageBubblePosition = 'left' | 'right';
 
 @Component({
   selector: 'app-message-bubble-component',
-  imports: [CommonModule, TimeAgoPipe],
+  imports: [CommonModule, TimeAgoComponent],
   templateUrl: './message-bubble-component.html',
   styleUrl: './message-bubble-component.scss',
 })

@@ -3,7 +3,7 @@ import { Component, computed, inject, input, output, signal } from '@angular/cor
 import { LucideAngularModule, Ellipsis, Pencil, Trash2, EyeOff, Flag, Reply, ChevronDown, ChevronUp } from 'lucide-angular';
 import { AvatarComponent } from '../../../ui/avatar/avatar-component/avatar-component';
 import { DropdownComponent } from '../../../ui/dropdown/dropdown-component/dropdown-component';
-import { TimeAgoPipe } from '../../../pipes/time-ago.pipe';
+import { TimeAgoComponent } from '../../time-ago/time-ago-component/time-ago-component';
 import { HighlightMentionPipe } from '../../../pipes/highlight-mention.pipe';
 import { CommentService } from '../../../../core/api/comment-service';
 import { DialogService } from '../../../../core/services/dialog-service';
@@ -17,7 +17,7 @@ import { CommentResponseDTO } from '../../../../models';
     LucideAngularModule,
     AvatarComponent,
     DropdownComponent,
-    TimeAgoPipe,
+    TimeAgoComponent,
     HighlightMentionPipe,],
   templateUrl: './comment-component.html',
   styleUrl: './comment-component.scss',

@@ -23,7 +23,7 @@
     <!-- Footer: timestamp e stato lettura -->
     @if (showTimestamp()) {
       <div [ngClass]="timestampClasses()" class="flex items-center gap-1">
-        <span>{{ createdAt() | timeAgo }}</span>
+        <app-time-ago [date]="createdAt()" />
 
         <!-- Stato lettura (solo per messaggi inviati) -->
         @if (shouldShowReadStatus()) {

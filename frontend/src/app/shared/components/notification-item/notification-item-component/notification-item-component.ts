@@ -11,13 +11,13 @@ import {
   LucideIconData,
 } from 'lucide-angular';
 import { AvatarComponent } from '../../../ui/avatar/avatar-component/avatar-component';
-import { TimeAgoPipe } from '../../../pipes/time-ago.pipe';
+import { TimeAgoComponent } from '../../time-ago/time-ago-component/time-ago-component';
 import { DebounceClick } from '../../../directives/debounce-click';
 import { NotificationType } from '../../../../models';
 
 @Component({
   selector: 'app-notification-item-component',
-  imports: [CommonModule, LucideAngularModule, AvatarComponent, TimeAgoPipe, DebounceClick],
+  imports: [CommonModule, LucideAngularModule, AvatarComponent, TimeAgoComponent, DebounceClick],
   templateUrl: './notification-item-component.html',
   styleUrl: './notification-item-component.scss',
 })

@@ -33,7 +33,7 @@
         <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
           <span class="hover:underline cursor-pointer">&#64;{{ post().autore.username }}</span>
           <span class="mx-1">·</span>
-          <time [attr.datetime]="post().createdAt">{{ post().createdAt | timeAgo }}</time>
+          <app-time-ago [date]="post().createdAt" />
         </p>
       </div>
     </div>

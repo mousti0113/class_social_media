@@ -3,10 +3,10 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AvatarComponent } from '../../../ui/avatar/avatar-component/avatar-component';
 import { BadgeComponent } from '../../../ui/badge/badge-component/badge-component';
-import { TimeAgoPipe } from '../../../pipes/time-ago.pipe';
+import { TimeAgoComponent } from '../../time-ago/time-ago-component/time-ago-component';
 @Component({
   selector: 'app-conversation-item-component',
-  imports: [CommonModule, AvatarComponent, BadgeComponent, TimeAgoPipe],
+  imports: [CommonModule, AvatarComponent, BadgeComponent, TimeAgoComponent],
   templateUrl: './conversation-item-component.html',
   styleUrl: './conversation-item-component.scss',
 })

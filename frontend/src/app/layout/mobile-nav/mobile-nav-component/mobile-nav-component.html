@@ -1,0 +1,79 @@
+<!-- Mobile Bottom Navigation -->
+<nav 
+  class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 safe-area-bottom"
+>
+  <div class="flex items-center justify-around h-16">
+    
+    <!-- Home -->
+    <a
+      routerLink="/"
+      routerLinkActive="text-primary-500"
+      [routerLinkActiveOptions]="{ exact: true }"
+      class="flex flex-col items-center justify-center flex-1 h-full text-gray-500 dark:text-gray-400 hover:text-primary-500 transition-colors"
+      aria-label="Home"
+    >
+      <lucide-icon [img]="HomeIcon" [size]="24"></lucide-icon>
+      <span class="text-[10px] mt-1 font-medium">Home</span>
+    </a>
+
+    <!-- Cerca -->
+    <a
+      routerLink="/search"
+      routerLinkActive="text-primary-500"
+      class="flex flex-col items-center justify-center flex-1 h-full text-gray-500 dark:text-gray-400 hover:text-primary-500 transition-colors"
+      aria-label="Cerca"
+    >
+      <lucide-icon [img]="SearchIcon" [size]="24"></lucide-icon>
+      <span class="text-[10px] mt-1 font-medium">Cerca</span>
+    </a>
+
+    <!-- Crea Post -->
+    <button
+      type="button"
+      class="flex flex-col items-center justify-center flex-1 h-full text-gray-500 dark:text-gray-400 hover:text-primary-500 transition-colors"
+      (click)="createPost()"
+      aria-label="Crea post"
+    >
+      <div class="w-10 h-10 rounded-xl bg-primary-500 flex items-center justify-center text-white shadow-lg shadow-primary-500/30">
+        <lucide-icon [img]="PlusIcon" [size]="24"></lucide-icon>
+      </div>
+    </button>
+
+    <!-- Notifiche -->
+    <a
+      routerLink="/notifications"
+      routerLinkActive="text-primary-500"
+      class="relative flex flex-col items-center justify-center flex-1 h-full text-gray-500 dark:text-gray-400 hover:text-primary-500 transition-colors"
+      aria-label="Notifiche"
+    >
+      <div class="relative">
+        <lucide-icon [img]="BellIcon" [size]="24"></lucide-icon>
+        
+        <!-- Badge notifiche non lette -->
+        @if (hasUnread()) {
+          <span 
+            class="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
+          >
+            {{ unreadCount() > 99 ? '99+' : unreadCount() }}
+          </span>
+        }
+      </div>
+      <span class="text-[10px] mt-1 font-medium">Notifiche</span>
+    </a>
+
+    <!-- Profilo -->
+    <a
+      [routerLink]="profileUrl()"
+      routerLinkActive="text-primary-500"
+      class="flex flex-col items-center justify-center flex-1 h-full text-gray-500 dark:text-gray-400 hover:text-primary-500 transition-colors"
+      aria-label="Profilo"
+    >
+      <lucide-icon [img]="UserIcon" [size]="24"></lucide-icon>
+      <span class="text-[10px] mt-1 font-medium">Profilo</span>
+    </a>
+
+  </div>
+</nav>
+
+<!-- Spacer per evitare che il contenuto sia coperto dalla nav -->
+<div class="md:hidden h-16 safe-area-bottom"></div>

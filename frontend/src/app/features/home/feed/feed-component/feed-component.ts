@@ -9,8 +9,9 @@ import { PostResponseDTO } from '../../../../models';
 import { InfiniteScroll } from '../../../../shared/directives/infinite-scroll';
 import { CreatePostComponent } from '../../components/create-post/create-post-component/create-post-component';
 import { SidebarOnlineComponent } from '../../components/sidebar-online/sidebar-online-component/sidebar-online-component';
-import { WebsocketService, PostLikeUpdate } from '../../../../core/services/websocket-service';
+import { WebsocketService, PostLikeUpdate, CommentsCountUpdate } from '../../../../core/services/websocket-service';
 import { AuthService } from '../../../../core/auth/services/auth-service';
+import { OnlineUsersDrawerComponent } from '../../components/online-users-drawer/online-users-drawer-component/online-users-drawer-component';
 
 @Component({
   selector: 'app-feed-component',
@@ -19,6 +20,7 @@ import { AuthService } from '../../../../core/auth/services/auth-service';
     PostCardComponent,
     CreatePostComponent,
     SidebarOnlineComponent,
+    OnlineUsersDrawerComponent,
     SkeletonComponent,
     SpinnerComponent,
     InfiniteScroll,
@@ -35,6 +37,7 @@ export class FeedComponent implements OnInit, OnDestroy {
   private postUpdatedSubscription?: Subscription;
   private postDeletedSubscription?: Subscription;
   private postLikedSubscription?: Subscription;
+  private commentsCountSubscription?: Subscription;
 
   // Stato
   readonly posts = signal<PostResponseDTO[]>([]);
@@ -65,6 +68,7 @@ export class FeedComponent implements OnInit, OnDestroy {
     this.subscribeToPostUpdates();
     this.subscribeToPostDeletes();
     this.subscribeToPostLikes();
+    this.subscribeToCommentsCount();
   }
 
   ngOnDestroy(): void {
@@ -72,6 +76,7 @@ export class FeedComponent implements OnInit, OnDestroy {
     this.postUpdatedSubscription?.unsubscribe();
     this.postDeletedSubscription?.unsubscribe();
     this.postLikedSubscription?.unsubscribe();
+    this.commentsCountSubscription?.unsubscribe();
   }
 
   /**
@@ -151,6 +156,29 @@ export class FeedComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         console.error('[Feed] Errore sottoscrizione like:', err);
+      }
+    });
+  }
+
+  /**
+   * Sottoscrizione agli aggiornamenti del conteggio commenti via WebSocket
+   * Il conteggio dei commenti viene aggiornato in tempo reale
+   */
+  private subscribeToCommentsCount(): void {
+    this.commentsCountSubscription = this.websocketService.commentsCount$.subscribe({
+      next: (countUpdate: CommentsCountUpdate) => {
+        console.log('[Feed] Comments count update via WebSocket:', countUpdate.postId, 'comments:', countUpdate.commentsCount);
+        this.posts.update(posts =>
+          posts.map(p => {
+            if (p.id === countUpdate.postId) {
+              return { ...p, commentsCount: countUpdate.commentsCount };
+            }
+            return p;
+          })
+        );
+      },
+      error: (err) => {
+        console.error('[Feed] Errore sottoscrizione conteggio commenti:', err);
       }
     });
   }

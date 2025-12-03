@@ -21,12 +21,10 @@
           &#64;{{ comment().autore.username }}
         </span>
         <span class="text-gray-400 dark:text-gray-500 text-sm mx-1">·</span>
-        <time 
+        <app-time-ago
           class="text-gray-500 dark:text-gray-400 text-sm"
-          [attr.datetime]="comment().createdAt"
-        >
-          {{ comment().createdAt | timeAgo }}
-        </time>
+          [date]="comment().createdAt"
+        />
       </div>
 
       <!-- Menu dropdown -->
