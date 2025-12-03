@@ -29,6 +29,8 @@ export class WebsocketService {
   private readonly postUpdatedSubject = new Subject<any>();
   private readonly postDeletedSubject = new Subject<any>();
   private readonly postLikedSubject = new Subject<PostLikeUpdate>();
+  private readonly commentUpdatesSubject = new Subject<CommentUpdate>();
+  private readonly commentsCountSubject = new Subject<CommentsCountUpdate>();
 
   // Observables pubblici per sottoscrizioni
   public notifications$ = this.notificationsSubject.asObservable();
@@ -40,6 +42,11 @@ export class WebsocketService {
   public postUpdated$ = this.postUpdatedSubject.asObservable();
   public postDeleted$ = this.postDeletedSubject.asObservable();
   public postLiked$ = this.postLikedSubject.asObservable();
+  public commentUpdates$ = this.commentUpdatesSubject.asObservable();
+  public commentsCount$ = this.commentsCountSubject.asObservable();
+
+  // Mappa per tenere traccia delle sottoscrizioni ai commenti per post
+  private commentSubscriptions = new Map<number, any>();
 
   /**
    * Connette al WebSocket server
@@ -231,6 +238,13 @@ export class WebsocketService {
       this.postLikedSubject.next(likeUpdate);
     });
 
+    // Sottoscrizione agli aggiornamenti conteggio commenti (globale)
+    this.client.subscribe('/topic/posts/comments-count', (message: IMessage) => {
+      const countUpdate = JSON.parse(message.body);
+      console.log('[WebSocket] Comments count update ricevuto:', countUpdate);
+      this.commentsCountSubject.next(countUpdate);
+    });
+
     console.log('[WebSocket] Sottoscrizioni attive');
   }
 
@@ -284,6 +298,50 @@ export class WebsocketService {
   }
 
   /**
+   * Sottoscrive agli aggiornamenti dei commenti per un post specifico
+   *
+   * @param postId ID del post
+   */
+  subscribeToPostComments(postId: number): void {
+    if (!this.client?.connected) {
+      console.warn('[WebSocket] Non connesso, impossibile sottoscrivere ai commenti');
+      return;
+    }
+
+    // Evita sottoscrizioni duplicate
+    if (this.commentSubscriptions.has(postId)) {
+      console.log(`[WebSocket] Già sottoscritto ai commenti del post ${postId}`);
+      return;
+    }
+
+    const subscription = this.client.subscribe(
+      `/topic/posts/${postId}/comments`,
+      (message: IMessage) => {
+        const update = JSON.parse(message.body);
+        console.log(`[WebSocket] Aggiornamento commento per post ${postId}:`, update);
+        this.commentUpdatesSubject.next(update);
+      }
+    );
+
+    this.commentSubscriptions.set(postId, subscription);
+    console.log(`[WebSocket] Sottoscritto ai commenti del post ${postId}`);
+  }
+
+  /**
+   * Cancella la sottoscrizione ai commenti di un post
+   *
+   * @param postId ID del post
+   */
+  unsubscribeFromPostComments(postId: number): void {
+    const subscription = this.commentSubscriptions.get(postId);
+    if (subscription) {
+      subscription.unsubscribe();
+      this.commentSubscriptions.delete(postId);
+      console.log(`[WebSocket] Disiscritto dai commenti del post ${postId}`);
+    }
+  }
+
+  /**
    * Verifica se il WebSocket è connesso
    */
   isConnected(): boolean {
@@ -331,4 +389,38 @@ export interface PostLikeUpdate {
 
   /** Tipo dell'aggiornamento */
   type: 'like_update';
+}
+
+/**
+ * Interfaccia per aggiornamenti commenti
+ */
+export interface CommentUpdate {
+  /** ID del post */
+  postId: number;
+
+  /** Tipo dell'aggiornamento */
+  type: 'comment_created' | 'comment_updated' | 'comment_deleted';
+
+  /** Commento (presente per created e updated) */
+  comment?: any;
+
+  /** ID del commento (presente per deleted) */
+  commentId?: number;
+
+  /** ID del commento padre (presente per risposte) */
+  parentCommentId?: number | null;
+}
+
+/**
+ * Interfaccia per aggiornamenti conteggio commenti
+ */
+export interface CommentsCountUpdate {
+  /** ID del post */
+  postId: number;
+
+  /** Nuovo conteggio dei commenti */
+  commentsCount: number;
+
+  /** Tipo dell'aggiornamento */
+  type: 'comments_count_update';
 }

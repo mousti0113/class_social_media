@@ -4,6 +4,7 @@ import { catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from '../services/auth-service';
 import { TokenService } from '../services/token-service';
 import { ToastService } from '../../services/toast-service';
+import { OnlineUsersStore } from '../../stores/online-users-store';
 
 /**
  * Interceptor per gestire errori HTTP e refresh token automatico
@@ -27,6 +28,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const tokenService = inject(TokenService);
   const toastService = inject(ToastService);
+  const onlineUsersStore = inject(OnlineUsersStore);
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
@@ -42,7 +44,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
       // Gestisce errori 401 Unauthorized
       if (error.status === 401) {
-        return handle401Error(req, next, authService, tokenService, toastService);
+        return handle401Error(req, next, authService, tokenService, toastService, onlineUsersStore);
       }
 
       // Gestisce errori 403 Forbidden
@@ -112,17 +114,20 @@ function handle401Error(
   next: HttpHandlerFn,
   authService: AuthService,
   tokenService: TokenService,
-  toastService: ToastService
+  toastService: ToastService,
+  onlineUsersStore: OnlineUsersStore
 ) {
-  // Non tentare refresh se siamo già sulla chiamata di refresh o su endpoint pubblici
+  // Non tentare refresh se siamo già sulla chiamata di refresh, logout o su endpoint pubblici
   if (
     req.url.includes('/auth/refresh-token') ||
     req.url.includes('/auth/login') ||
-    req.url.includes('/auth/register')
+    req.url.includes('/auth/register') ||
+    req.url.includes('/auth/logout')
   ) {
-    // Effettua logout se refresh token invalido
+    // Effettua logout locale se refresh token invalido (senza chiamare il backend)
     if (req.url.includes('/auth/refresh-token')) {
-      authService.logout().subscribe();
+      tokenService.clearTokens();
+      onlineUsersStore.stopPolling();
       toastService.warning('Sessione scaduta. Effettua nuovamente il login.', { duration: 7000 });
     }
     return throwError(() => new Error('Token non valido'));
@@ -143,8 +148,9 @@ function handle401Error(
       return next(clonedRequest);
     }),
     catchError((refreshError) => {
-      // Refresh fallito, effettua logout e mostra toast
-      authService.logout().subscribe();
+      // Refresh fallito, pulisci i token localmente (senza chiamare il backend per evitare loop)
+      tokenService.clearTokens();
+      onlineUsersStore.stopPolling();
       
       console.error('Errore refresh token:', refreshError);
       toastService.warning(

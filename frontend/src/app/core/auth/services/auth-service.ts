@@ -55,14 +55,29 @@ export class AuthService {
 
   /**
    * Logout utente corrente
+   * Prima pulisce i token localmente, poi notifica il backend
    */
   logout(): Observable<void> {
-    return this.http.post<void>(`${this.API_URL}/logout`, {}).pipe(
-      tap(() => this.handleLogoutSuccess()),
-      catchError((error) => {
-        // Anche se il logout fallisce, pulisci comunque il client
-        this.handleLogoutSuccess();
-        return throwError(() => error);
+    // Pulisci prima i token localmente per evitare problemi di 401 sulla chiamata di logout
+    const refreshToken = this.tokenService.getRefreshToken();
+    this.handleLogoutSuccess();
+    
+    // Se non c'è refresh token, non c'è bisogno di chiamare il backend
+    if (!refreshToken) {
+      return new Observable<void>(observer => {
+        observer.next();
+        observer.complete();
+      });
+    }
+    
+    // Notifica il backend (con il token già salvato prima di pulirlo)
+    return this.http.post<void>(`${this.API_URL}/logout`, { refreshToken }).pipe(
+      catchError(() => {
+        // Ignora errori dal backend, il logout locale è già stato fatto
+        return new Observable<void>(observer => {
+          observer.next();
+          observer.complete();
+        });
       })
     );
   }

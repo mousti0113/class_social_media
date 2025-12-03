@@ -1,17 +1,21 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { UserService } from '../api/user-service';
 import { UserSummaryDTO } from '../../models';
-import { interval, firstValueFrom } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { interval, Subscription, firstValueFrom } from 'rxjs';
+import { TokenService } from '../auth/services/token-service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class OnlineUsersStore {
   private readonly userService = inject(UserService);
+  private readonly tokenService = inject(TokenService);
 
   // Intervallo di aggiornamento automatico (30 secondi)
   private readonly REFRESH_INTERVAL = 30000;
+  
+  // Subscription per il polling
+  private pollingSubscription: Subscription | null = null;
 
   // ============================================================================
   // SIGNALS PRIVATI
@@ -54,12 +58,45 @@ export class OnlineUsersStore {
   // ============================================================================
 
   constructor() {
-    // Auto-refresh ogni 30 secondi
-    interval(this.REFRESH_INTERVAL)
-      .pipe(takeUntilDestroyed())
-      .subscribe(() => {
+    // Avvia il polling solo se l'utente è autenticato
+    this.startPolling();
+  }
+
+  // ============================================================================
+  // METODI PUBBLICI - Gestione Polling
+  // ============================================================================
+
+  /**
+   * Avvia il polling automatico degli utenti online
+   */
+  startPolling(): void {
+    // Non avviare se già in corso o se non autenticato
+    if (this.pollingSubscription || !this.tokenService.getAccessToken()) {
+      return;
+    }
+
+    this.pollingSubscription = interval(this.REFRESH_INTERVAL).subscribe(() => {
+      // Controlla se l'utente è ancora autenticato prima di fare la richiesta
+      if (this.tokenService.getAccessToken()) {
         this.refreshOnlineUsers();
-      });
+      } else {
+        this.stopPolling();
+      }
+    });
+  }
+
+  /**
+   * Ferma il polling automatico degli utenti online
+   * Chiamare questo metodo al logout
+   */
+  stopPolling(): void {
+    if (this.pollingSubscription) {
+      this.pollingSubscription.unsubscribe();
+      this.pollingSubscription = null;
+    }
+    // Pulisci anche i dati
+    this._onlineUsers.set([]);
+    this._lastUpdate.set(null);
   }
 
   // ============================================================================
