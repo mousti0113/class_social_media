@@ -54,6 +54,12 @@ export class UserListItemComponent {
   readonly clickable = input<boolean>(true);
 
   /**
+   * Disabilita la navigazione automatica al profilo (usa solo l'output userClick)
+   * @default false
+   */
+  readonly preventNavigation = input<boolean>(false);
+
+  /**
    * Mostra lo status online/offline
    * @default true
    */
@@ -132,7 +138,11 @@ export class UserListItemComponent {
     if (!this.clickable()) return;
 
     this.userClick.emit(this.userId());
-    this.router.navigate(['/profile', this.userId()]);
+    
+    // Naviga al profilo solo se la navigazione automatica non è disabilitata
+    if (!this.preventNavigation()) {
+      this.router.navigate(['/profile', this.userId()]);
+    }
   }
 
   /**

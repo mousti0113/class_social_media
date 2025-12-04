@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -202,6 +203,39 @@ public class GlobalExceptionHandler {
                 .build();
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    /**
+     * Gestisce InternalAuthenticationServiceException (401/403)
+     * Questa eccezione wrappa altre eccezioni durante l'autenticazione
+     */
+    @ExceptionHandler(InternalAuthenticationServiceException.class)
+    public ResponseEntity<ErrorResponseDTO> handleInternalAuthenticationServiceException(
+            InternalAuthenticationServiceException ex,
+            HttpServletRequest request) {
+
+        // Estrai la causa originale
+        Throwable cause = ex.getCause();
+        String message = "Errore durante l'autenticazione";
+        HttpStatus status = HttpStatus.UNAUTHORIZED;
+
+        if (cause instanceof UnauthorizedException) {
+            message = cause.getMessage();
+            status = HttpStatus.FORBIDDEN;
+        } else if (cause != null) {
+            message = cause.getMessage();
+        }
+
+        log.warn("Errore autenticazione: {} - Path: {}", message, request.getRequestURI());
+
+        ErrorResponseDTO error = ErrorResponseDTO.builder()
+                .status(status.value())
+                .error(status.getReasonPhrase())
+                .message(message)
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(status).body(error);
     }
 
     /**

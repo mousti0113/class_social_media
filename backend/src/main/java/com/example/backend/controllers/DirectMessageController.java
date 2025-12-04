@@ -6,6 +6,7 @@ import com.example.backend.dtos.response.ConversationResponseDTO;
 import com.example.backend.dtos.response.MessageResponseDTO;
 import com.example.backend.models.User;
 import com.example.backend.services.DirectMessageService;
+import com.example.backend.services.TypingIndicatorService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +39,7 @@ import java.util.Map;
 public class DirectMessageController {
 
     private final DirectMessageService messageService;
+    private final TypingIndicatorService typingIndicatorService;
 
     /**
      * POST /api/messages
@@ -322,5 +324,88 @@ public class DirectMessageController {
         List<MessageResponseDTO> messages = messageService.cercaMessaggi(user.getId(), searchTerm);
 
         return ResponseEntity.ok(messages);
+    }
+
+    /**
+     * POST /api/messages/typing/{userId}
+     * Segnala che l'utente sta scrivendo a un altro utente.
+     * <p>
+     * Il typing indicator scade automaticamente dopo 3 secondi,
+     * quindi il client deve chiamare questo endpoint ripetutamente
+     * mentre l'utente sta digitando.
+     * <p>
+     * Codici di stato:
+     * - 200 OK: Typing segnalato con successo
+     * - 401 UNAUTHORIZED: Utente non autenticato
+     *
+     * @param userId L'ID dell'utente destinatario
+     * @param user   Utente autenticato
+     * @return ResponseEntity vuoto
+     */
+    @PostMapping("/typing/{userId}")
+    public ResponseEntity<Void> setTyping(
+            @PathVariable Long userId,
+            @CurrentUser User user) {
+
+        log.debug("POST /api/messages/typing/{} - Username: {}", userId, user.getUsername());
+
+        typingIndicatorService.setTyping(user.getId(), userId);
+
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * DELETE /api/messages/typing/{userId}
+     * Segnala che l'utente ha smesso di scrivere.
+     * <p>
+     * Opzionale - il typing scade automaticamente dopo 3 secondi.
+     * Utile per rimuovere immediatamente l'indicatore quando l'utente
+     * invia il messaggio o cancella il testo.
+     * <p>
+     * Codici di stato:
+     * - 200 OK: Typing rimosso con successo
+     * - 401 UNAUTHORIZED: Utente non autenticato
+     *
+     * @param userId L'ID dell'utente destinatario
+     * @param user   Utente autenticato
+     * @return ResponseEntity vuoto
+     */
+    @DeleteMapping("/typing/{userId}")
+    public ResponseEntity<Void> clearTyping(
+            @PathVariable Long userId,
+            @CurrentUser User user) {
+
+        log.debug("DELETE /api/messages/typing/{} - Username: {}", userId, user.getUsername());
+
+        typingIndicatorService.clearTyping(user.getId(), userId);
+
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * GET /api/messages/typing/{userId}
+     * Verifica se un utente sta scrivendo.
+     * <p>
+     * Restituisce true se l'utente specificato sta attualmente
+     * scrivendo all'utente autenticato.
+     * <p>
+     * Codici di stato:
+     * - 200 OK: Stato typing restituito
+     * - 401 UNAUTHORIZED: Utente non autenticato
+     *
+     * @param userId L'ID dell'utente da controllare
+     * @param user   Utente autenticato
+     * @return Map con il campo isTyping (boolean)
+     */
+    @GetMapping("/typing/{userId}")
+    public ResponseEntity<Map<String, Boolean>> isTyping(
+            @PathVariable Long userId,
+            @CurrentUser User user) {
+
+        log.debug("GET /api/messages/typing/{} - Username: {}", userId, user.getUsername());
+
+        boolean isTyping = typingIndicatorService.isTyping(userId, user.getId());
+
+        return ResponseEntity.ok(Map.of("isTyping", isTyping));
     }
 }

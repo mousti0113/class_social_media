@@ -169,6 +169,45 @@ export class MessageService {
     const params = new HttpParams().set('q', searchTerm);
     return this.http.get<MessageResponseDTO[]>(`${this.baseUrl}/search`, { params });
   }
+
+  /**
+   * Segnala che l'utente sta scrivendo a un altro utente
+   *
+   * Endpoint: POST /api/messages/typing/{userId}
+   * Autenticazione: richiesta
+   *
+   * Il typing indicator scade dopo 3 secondi,
+   * chiamare ripetutamente mentre si digita
+   *
+   * @param userId ID del destinatario
+   */
+  setTyping(userId: number): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/typing/${userId}`, {});
+  }
+
+  /**
+   * Rimuove l'indicatore di typing
+   *
+   * Endpoint: DELETE /api/messages/typing/{userId}
+   * Autenticazione: richiesta
+   *
+   * @param userId ID del destinatario
+   */
+  clearTyping(userId: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/typing/${userId}`);
+  }
+
+  /**
+   * Verifica se un utente sta scrivendo
+   *
+   * Endpoint: GET /api/messages/typing/{userId}
+   * Autenticazione: richiesta
+   *
+   * @param userId ID dell'utente da controllare
+   */
+  isTyping(userId: number): Observable<TypingResponse> {
+    return this.http.get<TypingResponse>(`${this.baseUrl}/typing/${userId}`);
+  }
 }
 
 /**
@@ -185,4 +224,12 @@ export interface UnreadCountResponse {
 export interface DeleteConversationResponse {
   /** Numero di messaggi eliminati */
   deletedCount: number;
+}
+
+/**
+ * Risposta typing indicator
+ */
+export interface TypingResponse {
+  /** Se l'utente sta scrivendo */
+  isTyping: boolean;
 }

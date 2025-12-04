@@ -39,6 +39,11 @@ export class ConversationItemComponent {
   readonly isOnline = input<boolean>(false);
 
   /**
+   * Indica se l'altro utente sta scrivendo
+   */
+  readonly isTyping = input<boolean>(false);
+
+  /**
    * Anteprima dell'ultimo messaggio
    */
   readonly lastMessage = input<string>('');
@@ -69,24 +74,24 @@ export class ConversationItemComponent {
    * Classi CSS per il contenitore principale
    */
   readonly containerClasses = computed(() => {
-    const base = 'flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors';
+    const base = 'flex items-center gap-3 p-3 cursor-pointer transition-colors';
 
     if (this.isSelected()) {
-      return `${base} bg-primary-100 dark:bg-primary-900/30`;
+      return `${base} bg-primary-900/30`;
     }
 
     if (this.unreadCount() > 0) {
-      return `${base} bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800`;
+      return `${base} bg-gray-800/50 hover:bg-gray-800`;
     }
 
-    return `${base} hover:bg-gray-100 dark:hover:bg-gray-800`;
+    return `${base} hover:bg-gray-800`;
   });
 
   /**
    * Classi CSS per il nome
    */
   readonly nameClasses = computed(() => {
-    const base = 'font-semibold text-text-light dark:text-text-dark truncate';
+    const base = 'font-semibold text-white truncate';
 
     // Nome in grassetto se ci sono messaggi non letti
     return this.unreadCount() > 0 ? `${base} font-bold` : base;
@@ -99,10 +104,10 @@ export class ConversationItemComponent {
     const base = 'text-sm truncate';
 
     if (this.unreadCount() > 0) {
-      return `${base} text-text-light dark:text-text-dark font-medium`;
+      return `${base} text-white font-medium`;
     }
 
-    return `${base} text-gray-500 dark:text-gray-400`;
+    return `${base} text-gray-400`;
   });
 
   /**

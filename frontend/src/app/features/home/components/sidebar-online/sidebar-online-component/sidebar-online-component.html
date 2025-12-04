@@ -39,6 +39,7 @@
                 [nomeCompleto]="user.nomeCompleto"
                 [profilePictureUrl]="user.profilePictureUrl"
                 [isOnline]="true"
+                [preventNavigation]="true"
                 variant="compact"
                 (userClick)="onUserClick($event)"
               />
@@ -81,6 +82,7 @@
                 [nomeCompleto]="user.nomeCompleto"
                 [profilePictureUrl]="user.profilePictureUrl"
                 [isOnline]="false"
+                [preventNavigation]="true"
                 variant="compact"
                 (userClick)="onUserClick($event)"
               />

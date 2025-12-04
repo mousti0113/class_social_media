@@ -105,10 +105,10 @@ export class SidebarOnlineComponent implements OnInit {
   }
 
   /**
-   * Naviga al profilo utente
+   * Naviga alla chat con l'utente
    */
   onUserClick(userId: number): void {
-    this.router.navigate(['/profile', userId]);
+    this.router.navigate(['/messages', userId]);
   }
 
   /**
