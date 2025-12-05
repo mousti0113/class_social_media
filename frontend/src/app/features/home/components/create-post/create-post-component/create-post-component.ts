@@ -1,23 +1,23 @@
-import { Component, inject, signal, output, computed } from '@angular/core';
+import { Component, inject, signal, output, computed, viewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { LucideAngularModule, Image, X } from 'lucide-angular';
 import { AvatarComponent } from '../../../../../shared/ui/avatar/avatar-component/avatar-component';
 import { ButtonComponent } from '../../../../../shared/ui/button/button-component/button-component';
 import { ImageUploadComponent } from '../../../../../shared/components/image-upload/image-upload-component/image-upload-component';
+import { MentionAutocompleteComponent } from '../../../../../shared/components/mention-autocomplete/mention-autocomplete-component/mention-autocomplete-component';
 import { PostService } from '../../../../../core/api/post-service';
 import { AuthStore } from '../../../../../core/stores/auth-store';
 import { ToastService } from '../../../../../core/services/toast-service';
-import { CreaPostRequestDTO, PostResponseDTO } from '../../../../../models';
+import { CreaPostRequestDTO, PostResponseDTO, UserSummaryDTO } from '../../../../../models';
 
 @Component({
   selector: 'app-create-post-component',
   imports: [ CommonModule,
-    FormsModule,
     LucideAngularModule,
     AvatarComponent,
     ButtonComponent,
-    ImageUploadComponent,],
+    ImageUploadComponent,
+    MentionAutocompleteComponent,],
   templateUrl: './create-post-component.html',
   styleUrl: './create-post-component.scss',
 })
@@ -25,6 +25,10 @@ export class CreatePostComponent {
 private readonly postService = inject(PostService);
   private readonly authStore = inject(AuthStore);
   private readonly toastService = inject(ToastService);
+
+  // Riferimento alla textarea
+  readonly textareaRef = viewChild<ElementRef<HTMLTextAreaElement>>('textareaEl');
+  readonly mentionAutocomplete = viewChild<MentionAutocompleteComponent>('mentionAutocomplete');
 
   // Icone Lucide
   readonly ImageIcon = Image;
@@ -35,6 +39,12 @@ private readonly postService = inject(PostService);
   readonly imageUrl = signal<string | null>(null);
   readonly showImageUpload = signal<boolean>(false);
   readonly isSubmitting = signal<boolean>(false);
+
+  // Stato menzioni
+  readonly showMentionDropdown = signal<boolean>(false);
+  readonly mentionSearchTerm = signal<string>('');
+  readonly mentionStartIndex = signal<number>(-1);
+  readonly dropdownPosition = signal<{ top: number; left: number }>({ top: 0, left: 0 });
 
   // Lunghezza massima contenuto
   readonly MAX_CONTENT_LENGTH = 5000;
@@ -186,5 +196,123 @@ private readonly postService = inject(PostService);
     this.content.set('');
     this.imageUrl.set(null);
     this.showImageUpload.set(false);
+    this.closeMentionDropdown();
+  }
+
+  // ========== METODI MENZIONI ==========
+
+  /**
+   * Gestisce l'input nella textarea per rilevare @
+   */
+  onTextareaInput(event: Event): void {
+    const textarea = event.target as HTMLTextAreaElement;
+    const value = textarea.value;
+    const cursorPos = textarea.selectionStart;
+
+    this.content.set(value);
+    this.checkForMention(value, cursorPos, textarea);
+  }
+
+  /**
+   * Gestisce i tasti nella textarea
+   */
+  onTextareaKeydown(event: KeyboardEvent): void {
+    // Se il dropdown è aperto, delega la gestione al componente autocomplete
+    if (this.showMentionDropdown()) {
+      const handled = this.mentionAutocomplete()?.handleKeydown(event);
+      if (handled) {
+        return;
+      }
+    }
+  }
+
+  /**
+   * Controlla se l'utente sta digitando una menzione
+   */
+  private checkForMention(text: string, cursorPos: number, textarea: HTMLTextAreaElement): void {
+    // Trova l'ultima @ prima del cursore
+    const textBeforeCursor = text.substring(0, cursorPos);
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+
+    if (lastAtIndex === -1) {
+      this.closeMentionDropdown();
+      return;
+    }
+
+    // Verifica che @ sia all'inizio o preceduta da spazio/newline
+    const charBefore = lastAtIndex > 0 ? text[lastAtIndex - 1] : ' ';
+    if (!/[\s\n]/.test(charBefore) && lastAtIndex !== 0) {
+      this.closeMentionDropdown();
+      return;
+    }
+
+    // Estrai il testo dopo @
+    const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
+
+    // Se c'è uno spazio dopo @, non è più una menzione attiva
+    if (/\s/.test(textAfterAt)) {
+      this.closeMentionDropdown();
+      return;
+    }
+
+    // Aggiorna lo stato
+    this.mentionStartIndex.set(lastAtIndex);
+    this.mentionSearchTerm.set(textAfterAt);
+    this.showMentionDropdown.set(true);
+
+    // Calcola posizione dropdown
+    this.calculateDropdownPosition(textarea, lastAtIndex);
+
+    // Trigger ricerca nel componente autocomplete
+    this.mentionAutocomplete()?.search(textAfterAt);
+  }
+
+  /**
+   * Calcola la posizione del dropdown basata sulla posizione del cursore
+   */
+  private calculateDropdownPosition(textarea: HTMLTextAreaElement, atIndex: number): void {
+    const rect = textarea.getBoundingClientRect();
+    
+    // Posizione semplificata sotto la textarea
+    this.dropdownPosition.set({
+      top: rect.height + 4,
+      left: 0
+    });
+  }
+
+  /**
+   * Gestisce la selezione di un utente dal dropdown
+   */
+  onMentionSelected(user: UserSummaryDTO): void {
+    const textarea = this.textareaRef()?.nativeElement;
+    if (!textarea) return;
+
+    const text = this.content();
+    const startIndex = this.mentionStartIndex();
+    const cursorPos = textarea.selectionStart;
+
+    // Sostituisci @searchTerm con @username
+    const beforeMention = text.substring(0, startIndex);
+    const afterCursor = text.substring(cursorPos);
+    const newText = `${beforeMention}@${user.username} ${afterCursor}`;
+
+    this.content.set(newText);
+    this.closeMentionDropdown();
+
+    // Posiziona il cursore dopo la menzione
+    setTimeout(() => {
+      const newCursorPos = startIndex + user.username.length + 2; // +2 per @ e spazio
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+      textarea.focus();
+    });
+  }
+
+  /**
+   * Chiude il dropdown delle menzioni
+   */
+  closeMentionDropdown(): void {
+    this.showMentionDropdown.set(false);
+    this.mentionSearchTerm.set('');
+    this.mentionStartIndex.set(-1);
   }
 }

@@ -1,13 +1,8 @@
 <div class="relative inline-block">
   <!-- Trigger Button -->
-
-  <button
-    type="button"
-    (click)="toggle()"
-    class="cursor-pointer bg-transparent border-0 p-0 text-left"
-  >
+  <div (click)="toggle()" class="cursor-pointer">
     <ng-content select="[trigger]"></ng-content>
-  </button>
+  </div>
 
   <!-- Dropdown Menu -->
   @if (isOpen()) {
@@ -20,6 +15,7 @@
     <div
       class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden"
     >
+      <ng-content select="[content]"></ng-content>
       <ng-content select="[menu]"></ng-content>
     </div>
   </div>

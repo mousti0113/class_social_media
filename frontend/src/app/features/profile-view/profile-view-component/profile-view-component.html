@@ -1,0 +1,275 @@
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+  <!-- Loading state -->
+  @if (isLoading()) {
+    <div class="max-w-2xl mx-auto">
+      <!-- Header skeleton -->
+      <div class="p-6 pb-4">
+        <div class="flex items-start justify-between mb-4">
+          <app-skeleton shape="circle" width="90px" height="90px" />
+          <app-skeleton width="40px" height="40px" borderRadius="50%" />
+        </div>
+        <app-skeleton width="180px" height="24px" class="mb-2" />
+        <app-skeleton width="120px" height="16px" class="mb-3" />
+        <app-skeleton width="100%" height="40px" class="mb-4" />
+        <div class="flex gap-6">
+          <app-skeleton width="60px" height="40px" />
+          <app-skeleton width="60px" height="40px" />
+          <app-skeleton width="60px" height="40px" />
+        </div>
+      </div>
+      <!-- Tabs skeleton -->
+      <div class="flex border-b border-gray-200 dark:border-gray-700">
+        <app-skeleton width="50%" height="48px" />
+        <app-skeleton width="50%" height="48px" />
+      </div>
+    </div>
+  }
+
+  <!-- Error state -->
+  @if (error()) {
+    <div class="flex flex-col items-center justify-center py-20 px-4 text-center">
+      <div class="w-16 h-16 mb-4 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+        <span class="text-3xl">😕</span>
+      </div>
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+        {{ error() }}
+      </h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400">
+        Riprova più tardi
+      </p>
+    </div>
+  }
+
+  <!-- Profile content -->
+  @if (!isLoading() && !error() && user()) {
+    <div class="max-w-2xl mx-auto">
+      <!-- Profile Header -->
+      <header class="p-6 pb-4">
+        <!-- Top row: Avatar + Settings -->
+        <div class="flex items-start justify-between mb-4">
+          <!-- Avatar with online status -->
+          <div class="relative">
+            <app-avatar
+              [src]="user()!.profilePictureUrl"
+              [alt]="user()!.nomeCompleto"
+              [name]="user()!.nomeCompleto"
+              size="xl"
+              [status]="isOnline() ? 'online' : 'none'"
+              class="ring-4 ring-white dark:ring-gray-900"
+            />
+          </div>
+
+          <!-- Settings button (only for own profile) -->
+          @if (isOwnProfile()) {
+            <button
+              type="button"
+              (click)="goToSettings()"
+              class="p-2.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              aria-label="Impostazioni"
+            >
+              <lucide-icon [img]="SettingsIcon" [size]="24" />
+            </button>
+          }
+        </div>
+
+        <!-- Name and username -->
+        <div class="mb-3">
+          <h1 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+            {{ user()!.nomeCompleto }}
+            @if (user()!.isAdmin) {
+              <span class="text-primary-500">✓</span>
+            }
+          </h1>
+          <p class="text-gray-500 dark:text-gray-400">
+            &#64;{{ user()!.username }}
+          </p>
+        </div>
+
+        <!-- Bio -->
+        @if (user()!.bio) {
+          <p class="text-gray-800 dark:text-gray-200 mb-4 whitespace-pre-wrap">
+            {{ user()!.bio }}
+          </p>
+        }
+
+        <!-- Stats -->
+        <div class="flex gap-6 py-3 border-t border-gray-100 dark:border-gray-800">
+          <div class="flex flex-col">
+            <span class="text-lg font-bold text-gray-900 dark:text-white">
+              {{ formattedPostsCount() }}
+            </span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Post</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-lg font-bold text-gray-900 dark:text-white">
+              {{ formattedLikesCount() }}
+            </span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Like</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-lg font-bold text-gray-900 dark:text-white">
+              {{ formattedCommentsCount() }}
+            </span>
+            <span class="text-sm text-gray-500 dark:text-gray-400">Commenti</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Tabs -->
+      <nav class="sticky top-0 z-10 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700">
+        <div class="flex">
+          <button
+            type="button"
+            (click)="setTab('posts')"
+            class="flex-1 py-4 text-sm font-semibold transition-colors relative"
+            [class.text-gray-900]="activeTab() === 'posts'"
+            [class.dark:text-white]="activeTab() === 'posts'"
+            [class.text-gray-500]="activeTab() !== 'posts'"
+            [class.dark:text-gray-400]="activeTab() !== 'posts'"
+          >
+            Post
+            @if (activeTab() === 'posts') {
+              <span class="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary-500 rounded-t-full"></span>
+            }
+          </button>
+          <button
+            type="button"
+            (click)="setTab('media')"
+            class="flex-1 py-4 text-sm font-semibold transition-colors relative"
+            [class.text-gray-900]="activeTab() === 'media'"
+            [class.dark:text-white]="activeTab() === 'media'"
+            [class.text-gray-500]="activeTab() !== 'media'"
+            [class.dark:text-gray-400]="activeTab() !== 'media'"
+          >
+            Media
+            @if (activeTab() === 'media') {
+              <span class="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary-500 rounded-t-full"></span>
+            }
+          </button>
+        </div>
+      </nav>
+
+      <!-- Tab Content -->
+      <main class="pb-20">
+        <!-- Posts Tab -->
+        @if (activeTab() === 'posts') {
+          @if (isLoadingPosts()) {
+            <div class="divide-y divide-gray-200 dark:divide-gray-700">
+              @for (i of [1, 2, 3]; track i) {
+                <div class="p-4">
+                  <div class="flex items-center gap-3 mb-3">
+                    <app-skeleton shape="circle" width="40px" height="40px" />
+                    <div class="flex-1">
+                      <app-skeleton width="120px" height="14px" class="mb-1" />
+                      <app-skeleton width="80px" height="12px" />
+                    </div>
+                  </div>
+                  <app-skeleton width="100%" height="60px" borderRadius="8px" />
+                </div>
+              }
+            </div>
+          } @else if (posts().length === 0) {
+            <div class="flex flex-col items-center justify-center py-16 px-4 text-center">
+              <div class="w-16 h-16 mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                <span class="text-3xl">📝</span>
+              </div>
+              <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">
+                Nessun post
+              </h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                @if (isOwnProfile()) {
+                  Non hai ancora pubblicato nulla
+                } @else {
+                  Questo utente non ha ancora pubblicato nulla
+                }
+              </p>
+            </div>
+          } @else {
+            <div class="divide-y divide-gray-200 dark:divide-gray-700">
+              @for (post of posts(); track post.id) {
+                <div class="p-4">
+                  <app-post-card-component
+                    [post]="post"
+                    (deleted)="onPostDeleted($event)"
+                    (edited)="onPostEdited($event)"
+                    (hidden)="onPostHidden($event)"
+                  />
+                </div>
+              }
+            </div>
+
+            @if (hasMorePosts()) {
+              <div class="p-4">
+                <app-button
+                  variant="outline"
+                  [fullWidth]="true"
+                  [loading]="isLoadingMore()"
+                  (clicked)="loadMorePosts()"
+                >
+                  Carica altri post
+                </app-button>
+              </div>
+            }
+          }
+        }
+
+        <!-- Media Tab -->
+        @if (activeTab() === 'media') {
+          @if (isLoadingPosts()) {
+            <div class="grid grid-cols-3 gap-0.5">
+              @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+                <app-skeleton width="100%" height="0" class="pb-[100%]" />
+              }
+            </div>
+          } @else if (mediaPosts().length === 0) {
+            <div class="flex flex-col items-center justify-center py-16 px-4 text-center">
+              <div class="w-16 h-16 mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                <lucide-icon [img]="ImageIcon" [size]="32" class="text-gray-400" />
+              </div>
+              <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">
+                Nessuna foto
+              </h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                @if (isOwnProfile()) {
+                  Non hai ancora condiviso foto
+                } @else {
+                  Questo utente non ha ancora condiviso foto
+                }
+              </p>
+            </div>
+          } @else {
+            <div class="grid grid-cols-3 gap-0.5">
+              @for (post of mediaPosts(); track post.id) {
+                <button
+                  type="button"
+                  class="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800 cursor-pointer hover:opacity-90 transition-opacity"
+                  (click)="router.navigate(['/post', post.id])"
+                >
+                  <img
+                    [src]="post.imageUrl"
+                    [alt]="'Media di ' + post.autore.nomeCompleto"
+                    class="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                </button>
+              }
+            </div>
+
+            @if (hasMorePosts()) {
+              <div class="p-4">
+                <app-button
+                  variant="outline"
+                  [fullWidth]="true"
+                  [loading]="isLoadingMore()"
+                  (clicked)="loadMorePosts()"
+                >
+                  Carica altre foto
+                </app-button>
+              </div>
+            }
+          }
+        }
+      </main>
+    </div>
+  }
+</div>

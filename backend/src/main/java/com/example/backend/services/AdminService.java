@@ -225,6 +225,12 @@ public class AdminService {
             Post post = postRepository.findById(postId)
                     .orElseThrow(() -> new RuntimeException("Post non trovato"));
 
+            // Elimina tutte le notifiche associate al post
+            int notificationsDeleted = notificationRepository.deleteByRelatedPostId(postId);
+            if (notificationsDeleted > 0) {
+                log.debug("Eliminate {} notifiche associate al post {}", notificationsDeleted, postId);
+            }
+
             // Elimina il post
             postRepository.delete(post);
 
@@ -337,7 +343,7 @@ public class AdminService {
     /**
      * Ottiene statistiche sistema
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public Map<String, Object> ottieniStatisticheSistema(Long adminId, HttpServletRequest request) {
         log.info("Admin {} visualizza statistiche sistema", adminId);
         if (adminId != null) {

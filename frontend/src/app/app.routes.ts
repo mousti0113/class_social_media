@@ -6,6 +6,10 @@ export const routes: Routes = [
     loadChildren: () => import('./features/auth/auth.routes').then((m) => m.authRoutes),
   },
   {
+    path: 'admin',
+    loadChildren: () => import('./features/admin/admin.routes').then((m) => m.adminRoutes),
+  },
+  {
     path: '',
     loadChildren: () => import('./features/home/home.routes').then((m) => m.homeRoutes),
   },

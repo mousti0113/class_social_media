@@ -6,13 +6,15 @@ import { ToastService } from '../../../../core/services/toast-service';
 import { AuthStore } from '../../../../core/stores/auth-store';
 import { AutoResize } from '../../../directives/auto-resize';
 import { AvatarComponent } from '../../../ui/avatar/avatar-component/avatar-component';
-import { CommentResponseDTO, CreaCommentoRequestDTO } from '../../../../models';
+import { MentionAutocompleteComponent } from '../../mention-autocomplete/mention-autocomplete-component/mention-autocomplete-component';
+import { CommentResponseDTO, CreaCommentoRequestDTO, UserSummaryDTO } from '../../../../models';
 @Component({
   selector: 'app-comment-form-component',
   imports: [CommonModule,
     LucideAngularModule,
     AvatarComponent,
-    AutoResize,],
+    AutoResize,
+    MentionAutocompleteComponent,],
   templateUrl: './comment-form-component.html',
   styleUrl: './comment-form-component.scss',
 })
@@ -23,6 +25,7 @@ private readonly commentService = inject(CommentService);
 
   // Riferimento alla textarea per focus
   readonly textareaRef = viewChild<ElementRef<HTMLTextAreaElement>>('textareaEl');
+  readonly mentionAutocomplete = viewChild<MentionAutocompleteComponent>('mentionAutocomplete');
 
   constructor() {
     // Quando replyTo cambia, focus e scroll sulla textarea
@@ -81,6 +84,12 @@ private readonly commentService = inject(CommentService);
   readonly content = signal<string>('');
   readonly isSubmitting = signal<boolean>(false);
 
+  // Stato menzioni
+  readonly showMentionDropdown = signal<boolean>(false);
+  readonly mentionSearchTerm = signal<string>('');
+  readonly mentionStartIndex = signal<number>(-1);
+  readonly dropdownPosition = signal<{ top: number; left: number }>({ top: 0, left: 0 });
+
   // ========== COMPUTED ==========
 
   /**
@@ -117,8 +126,12 @@ private readonly commentService = inject(CommentService);
    * Gestisce input textarea
    */
   onInput(event: Event): void {
-    const target = event.target as HTMLTextAreaElement;
-    this.content.set(target.value);
+    const textarea = event.target as HTMLTextAreaElement;
+    const value = textarea.value;
+    const cursorPos = textarea.selectionStart;
+
+    this.content.set(value);
+    this.checkForMention(value, cursorPos, textarea);
   }
 
   /**
@@ -168,12 +181,112 @@ private readonly commentService = inject(CommentService);
   }
 
   /**
-   * Gestisce invio con Ctrl+Enter
+   * Gestisce invio con Ctrl+Enter e navigazione menzioni
    */
   onKeydown(event: KeyboardEvent): void {
+    // Se il dropdown è aperto, delega la gestione al componente autocomplete
+    if (this.showMentionDropdown()) {
+      const handled = this.mentionAutocomplete()?.handleKeydown(event);
+      if (handled) {
+        return;
+      }
+    }
+
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
       this.submit();
     }
+  }
+
+  // ========== METODI MENZIONI ==========
+
+  /**
+   * Controlla se l'utente sta digitando una menzione
+   */
+  private checkForMention(text: string, cursorPos: number, textarea: HTMLTextAreaElement): void {
+    // Trova l'ultima @ prima del cursore
+    const textBeforeCursor = text.substring(0, cursorPos);
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+
+    if (lastAtIndex === -1) {
+      this.closeMentionDropdown();
+      return;
+    }
+
+    // Verifica che @ sia all'inizio o preceduta da spazio/newline
+    const charBefore = lastAtIndex > 0 ? text[lastAtIndex - 1] : ' ';
+    if (!/[\s\n]/.test(charBefore) && lastAtIndex !== 0) {
+      this.closeMentionDropdown();
+      return;
+    }
+
+    // Estrai il testo dopo @
+    const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
+
+    // Se c'è uno spazio dopo @, non è più una menzione attiva
+    if (/\s/.test(textAfterAt)) {
+      this.closeMentionDropdown();
+      return;
+    }
+
+    // Aggiorna lo stato
+    this.mentionStartIndex.set(lastAtIndex);
+    this.mentionSearchTerm.set(textAfterAt);
+    this.showMentionDropdown.set(true);
+
+    // Calcola posizione dropdown
+    this.calculateDropdownPosition(textarea);
+
+    // Trigger ricerca nel componente autocomplete
+    this.mentionAutocomplete()?.search(textAfterAt);
+  }
+
+  /**
+   * Calcola la posizione del dropdown
+   */
+  private calculateDropdownPosition(textarea: HTMLTextAreaElement): void {
+    const rect = textarea.getBoundingClientRect();
+    
+    // Posizione sopra la textarea per i commenti (spazio limitato)
+    this.dropdownPosition.set({
+      top: -4, // Sopra la textarea
+      left: 0
+    });
+  }
+
+  /**
+   * Gestisce la selezione di un utente dal dropdown
+   */
+  onMentionSelected(user: UserSummaryDTO): void {
+    const textarea = this.textareaRef()?.nativeElement;
+    if (!textarea) return;
+
+    const text = this.content();
+    const startIndex = this.mentionStartIndex();
+    const cursorPos = textarea.selectionStart;
+
+    // Sostituisci @searchTerm con @username
+    const beforeMention = text.substring(0, startIndex);
+    const afterCursor = text.substring(cursorPos);
+    const newText = `${beforeMention}@${user.username} ${afterCursor}`;
+
+    this.content.set(newText);
+    this.closeMentionDropdown();
+
+    // Posiziona il cursore dopo la menzione
+    setTimeout(() => {
+      const newCursorPos = startIndex + user.username.length + 2; // +2 per @ e spazio
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+      textarea.focus();
+    });
+  }
+
+  /**
+   * Chiude il dropdown delle menzioni
+   */
+  closeMentionDropdown(): void {
+    this.showMentionDropdown.set(false);
+    this.mentionSearchTerm.set('');
+    this.mentionStartIndex.set(-1);
   }
 }

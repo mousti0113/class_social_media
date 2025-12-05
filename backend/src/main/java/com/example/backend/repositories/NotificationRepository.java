@@ -113,4 +113,14 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
      */
     @Modifying
     void deleteByUserId(Long userId);
+
+    /**
+     * Elimina tutte le notifiche associate a un post specifico.
+     * 
+     * @param postId ID del post
+     * @return numero di notifiche eliminate
+     */
+    @Modifying
+    @Query("DELETE FROM Notification n WHERE n.relatedPost.id = :postId")
+    int deleteByRelatedPostId(@Param("postId") Long postId);
 }

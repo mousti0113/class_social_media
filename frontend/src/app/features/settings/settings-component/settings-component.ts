@@ -23,6 +23,7 @@ import { Subject, takeUntil, finalize } from 'rxjs';
 
 import { UserService } from '../../../core/api/user-service';
 import { AuthStore } from '../../../core/stores/auth-store';
+import { ThemeStore, Theme } from '../../../core/stores/theme-store';
 import { AuthService } from '../../../core/auth/services/auth-service';
 import { ToastService } from '../../../core/services/toast-service';
 import { DialogService } from '../../../core/services/dialog-service';
@@ -31,7 +32,7 @@ import { ButtonComponent } from '../../../shared/ui/button/button-component/butt
 import { AggiornaProfiloRequestDTO, CambiaPasswordRequestDTO, DisattivaAccountRequestDTO } from '../../../models';
 
 type SettingsSection = 'profile' | 'password' | 'theme' | 'account';
-type ThemeMode = 'light' | 'dark' | 'system';
+type ThemeMode = Theme | 'system';
 
 @Component({
   selector: 'app-settings-component',
@@ -49,6 +50,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly userService = inject(UserService);
   private readonly authStore = inject(AuthStore);
+  private readonly themeStore = inject(ThemeStore);
   private readonly authService = inject(AuthService);
   private readonly toastService = inject(ToastService);
   private readonly dialogService = inject(DialogService);
@@ -89,7 +91,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   readonly showConfirmPassword = signal(false);
 
   // Theme
-  readonly currentTheme = signal<ThemeMode>('system');
+  readonly currentTheme = signal<ThemeMode>('light');
 
   // Deactivate form
   readonly deactivatePassword = signal('');
@@ -149,12 +151,19 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Carica la preferenza tema dal localStorage
+   * Carica la preferenza tema dal ThemeStore
    */
   private loadThemePreference(): void {
-    const savedTheme = localStorage.getItem('theme') as ThemeMode;
-    if (savedTheme) {
-      this.currentTheme.set(savedTheme);
+    // Controlla se c'è una preferenza salvata
+    if (this.themeStore.hasSavedPreference()) {
+      // Usa la preferenza salvata
+      this.currentTheme.set(this.themeStore.currentTheme());
+    } else {
+      // Nessuna preferenza salvata, usa 'system'
+      this.currentTheme.set('system');
+      // Ma applica comunque la preferenza di sistema
+      const systemTheme = this.themeStore.getSystemThemePreference();
+      this.themeStore.setTheme(systemTheme);
     }
   }
 
@@ -282,23 +291,13 @@ export class SettingsComponent implements OnInit, OnDestroy {
    */
   setTheme(theme: ThemeMode): void {
     this.currentTheme.set(theme);
-    localStorage.setItem('theme', theme);
 
-    // Applica il tema
-    const html = document.documentElement;
-    
-    if (theme === 'dark') {
-      html.classList.add('dark');
-    } else if (theme === 'light') {
-      html.classList.remove('dark');
+    if (theme === 'system') {
+      // Usa la preferenza di sistema
+      this.themeStore.useSystemPreference();
     } else {
-      // System preference
-      const prefersDark = globalThis.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
-        html.classList.add('dark');
-      } else {
-        html.classList.remove('dark');
-      }
+      // Imposta il tema specifico
+      this.themeStore.setTheme(theme as Theme);
     }
 
     this.toastService.success('Tema applicato');

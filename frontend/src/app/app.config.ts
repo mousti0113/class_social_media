@@ -15,8 +15,8 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideRouter(routes),
     // Configurazione HTTP client con interceptors
-    // // 1. authInterceptor viene eseguito PER PRIMO (aggiunge il token)
+    // 1. authInterceptor viene eseguito PER PRIMO (aggiunge il token)
     // 2. errorInterceptor viene eseguito PER SECONDO (gestisce errori e refresh)
-    provideHttpClient(withInterceptors([ errorInterceptor,authInterceptor])),
+    provideHttpClient(withInterceptors([authInterceptor, errorInterceptor])),
   ],
 };
