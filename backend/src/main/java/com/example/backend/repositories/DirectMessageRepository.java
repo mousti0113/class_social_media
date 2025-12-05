@@ -15,14 +15,19 @@ import java.util.List;
 @Repository
 public interface DirectMessageRepository extends JpaRepository<DirectMessage, Long> {
 
-    // Conversazione tra due utenti
+    // Conversazione tra due utenti (esclude messaggi nascosti)
     @Query("""
         SELECT dm FROM DirectMessage dm
         WHERE dm.isDeletedPermanently = false
         AND (
-            (dm.sender.id = :user1Id AND dm.receiver.id = :user2Id AND dm.isDeletedBySender = false)
+            (dm.sender.id = :user1Id AND dm.receiver.id = :user2Id)
             OR
-            (dm.sender.id = :user2Id AND dm.receiver.id = :user1Id AND dm.isDeletedByReceiver = false)
+            (dm.sender.id = :user2Id AND dm.receiver.id = :user1Id)
+        )
+        AND NOT EXISTS (
+            SELECT 1 FROM HiddenMessage hm
+            WHERE hm.message.id = dm.id
+            AND hm.user.id = :user1Id
         )
         ORDER BY dm.createdAt ASC
         """)

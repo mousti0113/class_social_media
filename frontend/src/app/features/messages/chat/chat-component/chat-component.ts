@@ -2,9 +2,9 @@ import { Component, inject, OnInit, OnDestroy, signal, computed, ElementRef, Vie
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { LucideAngularModule, ArrowLeft, Send, Image } from 'lucide-angular';
+import { LucideAngularModule, ArrowLeft, Send, Image, Trash } from 'lucide-angular';
 import { Subscription, interval, Subject } from 'rxjs';
-import { switchMap, startWith, takeUntil } from 'rxjs/operators';
+import { switchMap, startWith, takeUntil, finalize } from 'rxjs/operators';
 import { MessageService } from '../../../../core/api/message-service';
 import { UserService } from '../../../../core/api/user-service';
 import { AuthStore } from '../../../../core/stores/auth-store';
@@ -58,12 +58,14 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   readonly ArrowLeftIcon = ArrowLeft;
   readonly SendIcon = Send;
   readonly ImageIcon = Image;
+  readonly TrashIcon = Trash;
 
   // Stato
   readonly otherUser = signal<UserSummaryDTO | null>(null);
   readonly messages = signal<MessageResponseDTO[]>([]);
   readonly isLoading = signal(true);
   readonly isSending = signal(false);
+  readonly deletingIds = signal<Set<number>>(new Set());
   readonly error = signal<string | null>(null);
   readonly messageText = signal('');
   readonly isOtherUserTyping = signal(false);
@@ -305,5 +307,57 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   trackByMessageId(index: number, message: MessageResponseDTO): number {
     return message.id;
+  }
+
+  /**
+   * Elimina un messaggio.
+   * - Se è un mio messaggio: soft delete (tutti vedono "Messaggio cancellato")
+   * - Se è un messaggio altrui: nascondimento (solo io non lo vedo più)
+   */
+  deleteMessage(messageId: number): void {
+    if (this.deletingIds().has(messageId)) return;
+
+    this.deletingIds.update(set => new Set(set).add(messageId));
+
+    this.messageService.deleteMessage(messageId)
+      .pipe(finalize(() => {
+        this.deletingIds.update(set => {
+          const next = new Set(set);
+          next.delete(messageId);
+          return next;
+        });
+      }))
+      .subscribe({
+        next: () => {
+          const currUserId = this.currentUserId();
+          this.messages.update(msgs =>
+            msgs.map(m => {
+              if (m.id === messageId) {
+                // Se sono il mittente -> soft delete (aggiorna flag)
+                if (m.mittente.id === currUserId) {
+                  return { ...m, isDeletedBySender: true };
+                }
+                // Se sono il destinatario -> il backend lo ha nascosto, lo rimuovo dalla lista
+                return null;
+              }
+              return m;
+            }).filter((m): m is MessageResponseDTO => m !== null)
+          );
+        },
+        error: (err) => {
+          console.error('Errore eliminazione messaggio:', err);
+        },
+      });
+  }
+
+  /**
+   * Verifica se il messaggio è stato eliminato dal mittente
+   */
+  isMessageDeleted(message: MessageResponseDTO): boolean {
+    return message.isDeletedBySender;
+  }
+
+  isDeleting(messageId: number): boolean {
+    return this.deletingIds().has(messageId);
   }
 }

@@ -8,8 +8,10 @@ import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.exception.UnauthorizedException;
 import com.example.backend.mappers.MessageMapper;
 import com.example.backend.models.DirectMessage;
+import com.example.backend.models.HiddenMessage;
 import com.example.backend.models.User;
 import com.example.backend.repositories.DirectMessageRepository;
+import com.example.backend.repositories.HiddenMessageRepository;
 import com.example.backend.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +32,7 @@ public class DirectMessageService {
     private final UserRepository userRepository;
     private final MessageMapper messageMapper;
     private final NotificationService notificationService;
+    private final HiddenMessageRepository hiddenMessageRepository;
 
     private static final String ENTITY_MESSAGE = "Messaggio";
     private static final String ENTITY_USER = "Utente";
@@ -157,7 +160,9 @@ public class DirectMessageService {
     }
 
     /**
-     * Elimina un messaggio (soft delete)
+     * Elimina un messaggio.
+     * - Se è un messaggio proprio (sender): soft delete (isDeletedBySender = true), tutti vedono "Messaggio cancellato"
+     * - Se è un messaggio altrui: nascondimento (HiddenMessage), solo tu non lo vedi più
      */
     @Transactional
     public void eliminaMessaggio(Long messageId, Long userId) {
@@ -172,30 +177,41 @@ public class DirectMessageService {
             throw new UnauthorizedException("Non hai i permessi per eliminare questo messaggio");
         }
 
-        // Soft delete in base al ruolo dell'utente
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(ENTITY_USER, FIELD_ID, userId));
+
+        // Se è il mittente -> SOFT DELETE (tutti vedranno "Messaggio cancellato")
         if (message.getSender().getId().equals(userId)) {
             message.setDeletedBySender(true);
+            messageRepository.save(message);
+            log.info("Messaggio {} eliminato (soft delete) dal mittente", messageId);
         } else {
-            message.setDeletedByReceiver(true);
+            // Se è il destinatario -> HIDE (solo lui non lo vede più)
+            // Verifica se già nascosto
+            if (!hiddenMessageRepository.existsByMessageIdAndUserId(messageId, userId)) {
+                HiddenMessage hiddenMessage = HiddenMessage.builder()
+                        .message(message)
+                        .user(user)
+                        .build();
+                hiddenMessageRepository.save(hiddenMessage);
+                log.info("Messaggio {} nascosto per utente {}", messageId, userId);
+            } else {
+                log.info("Messaggio {} già nascosto per utente {}", messageId, userId);
+            }
         }
-
-        // Se entrambi hanno eliminato, elimina permanentemente
-        if (message.isDeletedBySender() && message.isDeletedByReceiver()) {
-            message.setDeletedPermanently(true);
-
-
-        }
-
-        messageRepository.save(message);
-        log.info("Messaggio {} eliminato", messageId);
     }
 
     /**
-     * Elimina intera conversazione con un utente
+     * Elimina intera conversazione con un utente.
+     * - Messaggi propri: soft delete
+     * - Messaggi altrui: nascondimento
      */
     @Transactional
     public int eliminaConversazione(Long userId, Long altroUtenteId) {
         log.info("Eliminazione conversazione tra utente {} e utente {}", userId, altroUtenteId);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException(ENTITY_USER, FIELD_ID, userId));
 
         // Usa la query ottimizzata che carica tutti i messaggi senza filtri
         List<DirectMessage> messages = messageRepository
@@ -203,27 +219,26 @@ public class DirectMessageService {
 
         int count = 0;
         for (DirectMessage message : messages) {
-            // Marca come eliminato dal lato dell'utente corrente
+            // Se è il mittente -> soft delete
             if (message.getSender().getId().equals(userId)) {
                 message.setDeletedBySender(true);
             } else {
-                message.setDeletedByReceiver(true);
+                // Se è il destinatario -> hide (se non già nascosto)
+                if (!hiddenMessageRepository.existsByMessageIdAndUserId(message.getId(), userId)) {
+                    HiddenMessage hiddenMessage = HiddenMessage.builder()
+                            .message(message)
+                            .user(user)
+                            .build();
+                    hiddenMessageRepository.save(hiddenMessage);
+                }
             }
-
-            // Se entrambi hanno eliminato, elimina permanentemente
-            if (message.isDeletedBySender() && message.isDeletedByReceiver()) {
-                message.setDeletedPermanently(true);
-
-
-            }
-
             count++;
         }
 
-        // Salva tutti in batch
+        // Salva tutti i messaggi modificati in batch
         messageRepository.saveAll(messages);
 
-        log.info("Eliminati {} messaggi dalla conversazione", count);
+        log.info("Eliminati/nascosti {} messaggi dalla conversazione", count);
         return count;
     }
 

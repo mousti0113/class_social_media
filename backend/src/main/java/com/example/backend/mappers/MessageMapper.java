@@ -21,8 +21,8 @@ public class MessageMapper {
                 .mittente(userMapper.toUtenteSummaryDTO(message.getSender()))
                 .destinatario(userMapper.toUtenteSummaryDTO(message.getReceiver()))
                 .contenuto(message.getContent())
-
                 .isRead(message.isRead())
+                .isDeletedBySender(message.isDeletedBySender())
                 .createdAt(message.getCreatedAt())
                 .build();
     }

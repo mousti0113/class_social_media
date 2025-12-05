@@ -17,5 +17,6 @@ public class MessageResponseDTO {
     private String contenuto;
     private String imageUrl;
     private Boolean isRead;
+    private Boolean isDeletedBySender;
     private LocalDateTime createdAt;
 }

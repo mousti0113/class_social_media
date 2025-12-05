@@ -144,6 +144,7 @@ export interface MessageResponseDTO {
   contenuto: string;
   imageUrl: string | null;
   isRead: boolean;
+  isDeletedBySender: boolean;
   createdAt: string; // ISO 8601 format
 }
 
