@@ -146,6 +146,26 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Gestisce EmailNotVerifiedException (403)
+     */
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleEmailNotVerified(
+            EmailNotVerifiedException ex,
+            HttpServletRequest request) {
+
+        log.warn("Tentativo accesso con email non verificata: {} - Path: {}", ex.getMessage(), request.getRequestURI());
+
+        ErrorResponseDTO error = ErrorResponseDTO.builder()
+                .status(HttpStatus.FORBIDDEN.value())
+                .error("Email Not Verified")
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    /**
      * Gestisce InvalidInputException (400)
      */
     @ExceptionHandler(InvalidInputException.class)

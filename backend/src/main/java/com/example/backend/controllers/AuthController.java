@@ -1,6 +1,4 @@
 package com.example.backend.controllers;
-
-import com.example.backend.config.CurrentUser;
 import com.example.backend.dtos.request.LoginRequestDTO;
 import com.example.backend.dtos.request.PasswordResetConfirmDTO;
 import com.example.backend.dtos.request.PasswordResetRequestDTO;
@@ -8,8 +6,8 @@ import com.example.backend.dtos.request.RegistrazioneRequestDTO;
 import com.example.backend.dtos.request.RefreshTokenRequestDTO;
 import com.example.backend.dtos.response.LoginResponseDTO;
 import com.example.backend.dtos.response.RefreshTokenResponseDTO;
-import com.example.backend.models.User;
 import com.example.backend.services.AuthService;
+import com.example.backend.services.EmailVerificationService;
 import com.example.backend.services.PasswordResetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +28,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
+    private final EmailVerificationService emailVerificationService;
 
     /**
      * POST /api/auth/registrazione
@@ -38,7 +37,7 @@ public class AuthController {
      * @param request DTO con username, email, password e nome completo
      * @return LoginResponseDTO con access token, refresh token e dati utente
      * @throws ResourceAlreadyExistsException se username o email già esistono
-     * @throws LimitExceededException         se si supera il limite di 17 studenti
+     * @throws LimitExceededException         se si supera il limite massimo di studenti (configurabile)
      */
     @PostMapping("/register")
     public ResponseEntity<LoginResponseDTO> registrazione(@Valid @RequestBody RegistrazioneRequestDTO request) {
@@ -182,5 +181,62 @@ public class AuthController {
         boolean isValid = passwordResetService.isTokenValid(token);
 
         return ResponseEntity.ok(java.util.Map.of("valid", isValid));
+    }
+
+    /**
+     * GET /api/auth/verify-email?token={token}
+     * Verifica l'email dell'utente utilizzando il token ricevuto via email.
+     * <p>
+     * Endpoint pubblico (non richiede autenticazione).
+     * L'utente clicca sul link ricevuto via email che contiene il token.
+     * Il sistema valida il token e attiva l'account utente (isActive=true).
+     * <p>
+     * Il token deve essere:
+     * - Valido (esistente nel database)
+     * - Non scaduto (max 24 ore dalla generazione)
+     * - Non ancora utilizzato (verified=false)
+     *
+     * @param token Il token di verifica email
+     * @return Messaggio di conferma
+     * @throws InvalidInputException se il token è invalido, scaduto o già utilizzato
+     */
+    @GetMapping("/verify-email")
+    public ResponseEntity<java.util.Map<String, String>> verifyEmail(@RequestParam String token) {
+        log.debug("GET /api/auth/verify-email - Token presente");
+
+        emailVerificationService.verifyEmail(token);
+
+        return ResponseEntity.ok(java.util.Map.of(
+                "message", "Email verificata con successo! Ora puoi effettuare il login."));
+    }
+
+    /**
+     * POST /api/auth/resend-verification
+     * Reinvia l'email di verifica all'utente.
+     * <p>
+     * Endpoint pubblico (non richiede autenticazione).
+     * Permette all'utente di richiedere un nuovo token di verifica
+     * se il precedente è scaduto o non è stato ricevuto.
+     * <p>
+     * Per sicurezza, applica rate limiting:
+     * - Massimo 3 richieste per utente per ora
+     * <p>
+     * Restituisce sempre un messaggio di successo anche se l'email non esiste
+     * (previene user enumeration).
+     *
+     * @param request Mappa JSON con campo "email"
+     * @return Messaggio di conferma
+     * @throws LimitExceededException se l'utente ha superato il limite di 3 richieste/ora
+     */
+    @PostMapping("/resend-verification")
+    public ResponseEntity<java.util.Map<String, String>> resendVerification(
+            @RequestBody java.util.Map<String, String> request) {
+        String email = request.get("email");
+        log.debug("POST /api/auth/resend-verification - Email: {}", email);
+
+        emailVerificationService.resendVerificationEmail(email);
+
+        return ResponseEntity.ok(java.util.Map.of(
+                "message", "Se l'email è registrata, riceverai un nuovo link di verifica."));
     }
 }

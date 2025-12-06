@@ -105,10 +105,9 @@
     @if (!isEditing()) {
       <!-- Contenuto testuale -->
       @if (post().contenuto) {
-        <p
-          class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words"
-          [innerHTML]="post().contenuto | highlightMention"
-        ></p>
+        <p class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
+          <app-safe-mention-text [content]="post().contenuto" />
+        </p>
       }
     }
 

@@ -5,6 +5,7 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -33,6 +34,40 @@ public class JwtTokenProvider {
 
     @Value("${jwt.refresh-token-expiration}")
     private Long refreshTokenExpiration;
+
+    /**
+     * SICUREZZA: Valida che il JWT secret non sia il valore di default
+     * Blocca l'avvio dell'applicazione se JWT_SECRET non è configurato
+     */
+    @PostConstruct
+    public void validateJwtSecret() {
+        if (secret == null || secret.trim().isEmpty()) {
+            throw new IllegalStateException(
+                "❌ ERRORE CRITICO: JWT secret non configurato! " +
+                "Imposta la variabile d'ambiente JWT_SECRET con un valore sicuro (min 256 bits)."
+            );
+        }
+        
+        if ("default-secret".equals(secret)) {
+            throw new IllegalStateException(
+                "❌ ERRORE CRITICO: JWT secret utilizza il valore di default! " +
+                "Questo è ESTREMAMENTE PERICOLOSO in produzione. " +
+                "Imposta JWT_SECRET con un valore sicuro casuale (min 256 bits). " +
+                "Esempio generazione: openssl rand -base64 64"
+            );
+        }
+        
+        // Verifica lunghezza minima (256 bits = 32 bytes = 44 caratteri in base64)
+        if (secret.length() < 44) {
+            log.warn(
+                "⚠️ WARNING: JWT secret è più corto di 256 bits ({}). " +
+                "Si raccomanda almeno 256 bits per sicurezza ottimale.",
+                secret.length()
+            );
+        }
+        
+        log.info("✅ JWT secret configurato correttamente ({} caratteri)", secret.length());
+    }
 
     /**
      * Genera un access token per l'utente con tutti i dati necessari nel payload

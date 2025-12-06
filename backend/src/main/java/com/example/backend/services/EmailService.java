@@ -176,4 +176,55 @@ public class EmailService {
             log.error("Errore invio email conferma password a {}: {}", recipientEmail, e.getMessage());
         }
     }
+
+    /**
+     * Invia email di verifica account.
+     * <p>
+     * Contiene il link per verificare l'email e attivare l'account.
+     * <p>
+     * NOTA: Chiamato da EmailEventListener in modo asincrono.
+     *
+     * @param recipientEmail L'email dell'utente
+     * @param username       L'username dell'utente
+     * @param verificationToken Il token di verifica
+     */
+    public void sendVerificationEmail(String recipientEmail, String username, String verificationToken) {
+        log.info("Invio email di verifica a: {}", recipientEmail);
+
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(recipientEmail);
+            message.setSubject("Verifica il tuo account - beetUs");
+
+            String verificationUrl = frontendUrl + "/auth/verify-email?token=" + verificationToken;
+
+            String emailBody = String.format("""
+                Ciao %s!
+
+                Benvenuto/a su beetUs!
+
+                Per completare la registrazione e attivare il tuo account,
+                clicca sul link seguente:
+
+                %s
+
+                Il link è valido per 24 ore.
+
+                Se non hai richiesto questa registrazione, puoi ignorare questa email.
+
+                Cordiali saluti,
+                Il developer di beetUs - MousTech.
+                """, username, verificationUrl);
+
+            message.setText(emailBody);
+
+            mailSender.send(message);
+            log.info("Email di verifica inviata con successo a: {} - con url:{}", recipientEmail, verificationUrl);
+
+        } catch (Exception e) {
+            log.error("Errore invio email di verifica a {}: {}", recipientEmail, e.getMessage(), e);
+            // Non si propaga l'errore per non bloccare il flusso
+        }
+    }
 }

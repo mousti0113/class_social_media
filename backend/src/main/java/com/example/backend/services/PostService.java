@@ -196,11 +196,21 @@ public class PostService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post", "id", postId));
 
-        // Verifica che l'utente sia l'autore o un admin
+        // Carica utente per verificare se è admin
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Utente", "id", userId));
 
-        if (!post.getUser().getId().equals(userId)) {
+        // Verifica che l'utente sia l'autore o un admin
+        boolean isAuthor = post.getUser().getId().equals(userId);
+        boolean isAdmin = user.getIsAdmin();
+
+        if (!isAuthor && !isAdmin) {
             log.warn("Tentativo di eliminazione post non autorizzato - Post ID: {}, Utente ID: {}", postId, userId);
             throw new UnauthorizedException("Non hai i permessi per eliminare questo post");
+        }
+        
+        if (isAdmin && !isAuthor) {
+            log.info("Admin {} elimina post {} di utente {}", userId, postId, post.getUser().getId());
         }
 
         // Elimina l'immagine da Cloudinary se presente

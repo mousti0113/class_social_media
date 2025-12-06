@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -7,7 +8,7 @@ import { ButtonComponent } from '../../../../shared/ui/button/button-component/b
 import { AuthService } from '../../../../core/auth/services/auth-service';
 import { UserService } from '../../../../core/api/user-service';
 import { ToastService } from '../../../../core/services/toast-service';
-import { matchPasswordValidator, maxLengthValidator, passwordValidator, usernameValidator } from '../../../../core/utils/validators';
+import { matchPasswordValidator, maxLengthValidator, passwordValidator, schoolEmailValidator, usernameValidator } from '../../../../core/utils/validators';
 
 import { debounceTime, distinctUntilChanged, switchMap, of } from 'rxjs';
 
@@ -40,7 +41,7 @@ export class RegisterComponent {
   readonly registerForm: FormGroup = this.fb.group({
     nomeCompleto: ['', [Validators.required, maxLengthValidator(100)]],
     username: ['', [Validators.required, usernameValidator()]],
-    email: ['', [Validators.required, Validators.email]],
+    email: ['', [Validators.required, schoolEmailValidator()]],
     password: ['', [Validators.required, passwordValidator()]],
     confirmPassword: ['', [Validators.required, matchPasswordValidator('password')]],
   });
@@ -69,7 +70,8 @@ export class RegisterComponent {
 
             this.checkingUsername.set(true);
             return this.userService.checkUsernameAvailability(username);
-          })
+          }),
+          takeUntilDestroyed()
         )
         .subscribe({
           next: (result) => {
@@ -107,7 +109,8 @@ export class RegisterComponent {
 
             this.checkingEmail.set(true);
             return this.userService.checkEmailAvailability(email);
-          })
+          }),
+          takeUntilDestroyed()
         )
         .subscribe({
           next: (result) => {
@@ -148,7 +151,12 @@ export class RegisterComponent {
 
     // Errore email
     if (control.errors['email']) {
-      return 'Inserisci un indirizzo email valido';
+      return control.errors['email'].message || 'Inserisci un indirizzo email valido';
+    }
+
+    // Errore dominio email
+    if (control.errors['schoolEmail']) {
+      return control.errors['schoolEmail'].message;
     }
 
     // Errori custom
@@ -216,8 +224,14 @@ export class RegisterComponent {
       .register({ nomeCompleto, username, email, password })
       .subscribe({
         next: () => {
-          this.toastService.success('Account creato con successo! Benvenuto su beetUs!');
-          this.router.navigate(['/']);
+          this.isLoading.set(false);
+          this.toastService.success(
+            'Account creato! Controlla la tua email per verificare il tuo account.'
+          );
+          // Naviga al login con messaggio di verifica
+          this.router.navigate(['/auth/login'], {
+            state: { emailVerificationPending: true, email }
+          });
         },
         error: (error) => {
           this.isLoading.set(false);

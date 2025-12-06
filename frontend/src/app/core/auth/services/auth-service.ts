@@ -35,10 +35,12 @@ export class AuthService {
 
   /**
    * Registrazione nuovo utente
+   * Non salva i token perché l'utente deve prima verificare l'email
    */
   register(data: RegistrazioneRequestDTO): Observable<LoginResponseDTO> {
     return this.http.post<LoginResponseDTO>(`${this.API_URL}/register`, data).pipe(
-      tap((response) => this.handleAuthSuccess(response)),
+      // Non chiamiamo handleAuthSuccess perché il backend non restituisce token
+      // L'utente deve verificare l'email prima di poter accedere
       catchError((error) => this.handleAuthError(error))
     );
   }
@@ -173,6 +175,28 @@ export class AuthService {
   isAdmin(): boolean {
     const user = this.getCurrentUser();
     return user?.isAdmin ?? false;
+  }
+
+  /**
+   * Verifica l'email dell'utente con il token ricevuto via email
+   */
+  verifyEmail(token: string): Observable<{ message: string }> {
+    return this.http.get<{ message: string }>(`${this.API_URL}/verify-email`, {
+      params: { token }
+    }).pipe(
+      catchError((error) => this.handleAuthError(error))
+    );
+  }
+
+  /**
+   * Reinvia l'email di verifica
+   */
+  resendVerificationEmail(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.API_URL}/resend-verification`, {
+      email
+    }).pipe(
+      catchError((error) => this.handleAuthError(error))
+    );
   }
 
   /**

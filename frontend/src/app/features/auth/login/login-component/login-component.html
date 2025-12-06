@@ -23,6 +23,15 @@
           </h1>
         </div>
 
+        <!-- Messaggio info verifica email -->
+        @if (verificationInfoMessage()) {
+          <div class="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800">
+            <p class="text-sm text-blue-700 dark:text-blue-300">
+              {{ verificationInfoMessage() }}
+            </p>
+          </div>
+        }
+
         <!-- Messaggio errore globale -->
         @if (errorMessage()) {
           <div class="p-4 rounded-lg bg-error-50 dark:bg-error-900/30 border border-error-200 dark:border-error-800">
@@ -69,6 +78,44 @@
             Accedi
           </app-button>
         </form>
+
+        <!-- Form reinvio verifica email -->
+        @if (showResendForm()) {
+          <div class="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800">
+            <h3 class="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3">
+              Non hai ricevuto l'email di verifica?
+            </h3>
+            <form [formGroup]="resendForm" (ngSubmit)="resendVerificationEmail()" class="space-y-3">
+              <app-input-component
+                formControlName="email"
+                type="email"
+                placeholder="Email @marconirovereto.it"
+                [error]="getResendFieldError('email')"
+                size="sm"
+              />
+              <div class="flex gap-2">
+                <app-button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  (click)="toggleResendForm()"
+                  [disabled]="isResending()"
+                >
+                  Annulla
+                </app-button>
+                <app-button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  [loading]="isResending()"
+                  [disabled]="isResending()"
+                >
+                  Reinvia Email
+                </app-button>
+              </div>
+            </form>
+          </div>
+        }
 
         <!-- Link secondari -->
         <div class="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 text-sm">

@@ -7,7 +7,6 @@ import com.example.backend.events.CommentUpdatedEvent;
 import com.example.backend.mappers.CommentMapper;
 import com.example.backend.models.Comment;
 import com.example.backend.repositories.CommentRepository;
-import com.example.backend.repositories.PostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -35,7 +34,6 @@ public class CommentEventListener {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final CommentRepository commentRepository;
-    private final PostRepository postRepository;
     private final CommentMapper commentMapper;
 
     /**

@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { LucideAngularModule, ArrowLeft, Ellipsis, Pencil, Trash2, X, Check, Heart, MessageCircle, Share2 } from 'lucide-angular';
 import { Subscription } from 'rxjs';
 
-import { PostDettaglioResponseDTO, CommentResponseDTO, PostResponseDTO } from '../../../../models';
+import { PostDettaglioResponseDTO, CommentResponseDTO } from '../../../../models';
 import { PostService } from '../../../../core/api/post-service';
 import { CommentService } from '../../../../core/api/comment-service';
 import { LikeService } from '../../../../core/api/like-service';
@@ -19,7 +19,7 @@ import { DropdownComponent } from '../../../../shared/ui/dropdown/dropdown-compo
 import { CommentComponent } from '../../../../shared/components/comment/comment-component/comment-component';
 import { CommentFormComponent } from '../../../../shared/components/comment-form/comment-form-component/comment-form-component';
 import { TimeAgoComponent } from '../../../../shared/components/time-ago/time-ago-component/time-ago-component';
-import { HighlightMentionPipe } from '../../../../shared/pipes/highlight-mention.pipe';
+import { SafeMentionTextComponent } from '../../../../shared/components/safe-mention-text/safe-mention-text.component';
 
 @Component({
   selector: 'app-post-detail',
@@ -32,7 +32,7 @@ import { HighlightMentionPipe } from '../../../../shared/pipes/highlight-mention
     CommentComponent,
     CommentFormComponent,
     TimeAgoComponent,
-    HighlightMentionPipe,
+    SafeMentionTextComponent,
   ],
   templateUrl: './post-detail-component.html',
   styleUrl: './post-detail-component.scss',
@@ -49,7 +49,7 @@ export class PostDetailComponent implements OnInit, OnDestroy {
   private readonly websocketService = inject(WebsocketService);
   private readonly authStore = inject(AuthStore);
 
-  private subscriptions: Subscription[] = [];
+  private readonly subscriptions: Subscription[] = [];
 
   // Icone Lucide
   readonly ArrowLeftIcon = ArrowLeft;
@@ -483,7 +483,7 @@ export class PostDetailComponent implements OnInit, OnDestroy {
     const postData = this.post();
     if (!postData) return;
 
-    const url = window.location.href;
+    const url = globalThis.location.href;
 
     if (navigator.share) {
       try {
@@ -493,7 +493,7 @@ export class PostDetailComponent implements OnInit, OnDestroy {
           url: url,
         });
       } catch (err) {
-        // L'utente ha annullato la condivisione
+        console.error('Errore condivisione:', err);
       }
     } else {
       // Fallback: copia negli appunti

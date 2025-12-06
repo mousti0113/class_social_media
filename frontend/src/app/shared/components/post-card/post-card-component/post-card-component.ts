@@ -18,7 +18,7 @@ import { AvatarComponent } from '../../../ui/avatar/avatar-component/avatar-comp
 import { DropdownComponent } from '../../../ui/dropdown/dropdown-component/dropdown-component';
 import { PostActionsComponent } from '../../post-actions/post-actions-component/post-actions-component';
 import { TimeAgoComponent } from '../../time-ago/time-ago-component/time-ago-component';
-import { HighlightMentionPipe } from '../../../pipes/highlight-mention.pipe';
+import { SafeMentionTextComponent } from '../../safe-mention-text/safe-mention-text.component';
 import { DialogService } from '../../../../core/services/dialog-service';
 import { ToastService } from '../../../../core/services/toast-service';
 import { AuthStore } from '../../../../core/stores/auth-store';
@@ -34,7 +34,7 @@ import { PostService } from '../../../../core/api/post-service';
     DropdownComponent,
     PostActionsComponent,
     TimeAgoComponent,
-    HighlightMentionPipe,
+    SafeMentionTextComponent,
   ],
   templateUrl: './post-card-component.html',
   styleUrl: './post-card-component.scss',

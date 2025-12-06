@@ -37,24 +37,18 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         log.debug("Caricamento utente: {}", username);
 
-        // Cerca l'utente per username
-        User user = userRepository.findByUsername(username)
+        // Cerca l'utente per username (solo se attivo)
+        User user = userRepository.findByUsernameAndIsActiveTrue(username)
                 .orElseThrow(() -> {
-                    log.warn("Tentativo di accesso con username inesistente: {}", username);
-                    return new UsernameNotFoundException("Utente non trovato con username: " + username);
+                    log.warn("Tentativo di accesso con username inesistente o non attivo: {}", username);
+                    return new UsernameNotFoundException("Utente non trovato o non attivo con username: " + username);
                 });
-
-        // Verifica se l'utente è attivo
-        if (!user.getIsActive()) {
-            log.warn("Tentativo di accesso da utente disattivato: {} (ID: {})", username, user.getId());
-            throw new UnauthorizedException("Account disattivato. Contatta l'amministratore.");
-        }
 
         // Crea la lista dei ruoli
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_STUDENT"));
 
-        if (user.getIsAdmin()) {
+        if (user.getIsAdmin().booleanValue()) {
             authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
             log.debug("Utente {} caricato con ruolo ADMIN", username);
         } else {

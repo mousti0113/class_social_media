@@ -59,6 +59,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * La ricerca è case-insensitive grazie a LOWER() e utilizza LIKE con % per
      * matching parziale.
      * 
+     * SICUREZZA: I caratteri speciali LIKE (%, _) nel searchTerm sono gestiti
+     * dal parametrizzato di JPA che previene SQL injection.
+     * Per prevenire wildcard injection, usare escape nel service layer se necessario.
      */
     @Query("""
             SELECT p FROM Post p

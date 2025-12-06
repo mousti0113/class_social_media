@@ -4,7 +4,7 @@ import { LucideAngularModule, Ellipsis, Pencil, Trash2, EyeOff, Flag, Reply, Che
 import { AvatarComponent } from '../../../ui/avatar/avatar-component/avatar-component';
 import { DropdownComponent } from '../../../ui/dropdown/dropdown-component/dropdown-component';
 import { TimeAgoComponent } from '../../time-ago/time-ago-component/time-ago-component';
-import { HighlightMentionPipe } from '../../../pipes/highlight-mention.pipe';
+import { SafeMentionTextComponent } from '../../safe-mention-text/safe-mention-text.component';
 import { CommentService } from '../../../../core/api/comment-service';
 import { DialogService } from '../../../../core/services/dialog-service';
 import { ToastService } from '../../../../core/services/toast-service';
@@ -18,7 +18,7 @@ import { CommentResponseDTO } from '../../../../models';
     AvatarComponent,
     DropdownComponent,
     TimeAgoComponent,
-    HighlightMentionPipe,],
+    SafeMentionTextComponent,],
   templateUrl: './comment-component.html',
   styleUrl: './comment-component.scss',
 })

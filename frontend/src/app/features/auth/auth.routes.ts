@@ -26,6 +26,15 @@ export const authRoutes: Routes = [
     canActivate: [guestGuard],
   },
   {
+    path: 'verify-email',
+    loadComponent: () =>
+      import('./verify-email/verify-email-component/verify-email-component').then(
+        (m) => m.VerifyEmailComponent
+      ),
+    title: 'Verifica Email - beetUs',
+    canActivate: [guestGuard],
+  },
+  {
     path: '',
     redirectTo: 'login',
     pathMatch: 'full',

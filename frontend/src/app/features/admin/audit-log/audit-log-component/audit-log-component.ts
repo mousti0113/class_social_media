@@ -1,17 +1,17 @@
 import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
   LucideAngularModule,
   ArrowLeft,
   Search,
-  Filter,
+  ListFilter,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  AlertCircle,
-  Loader2,
+  CircleAlert,
+  Loader,
   FileText,
   User,
   Calendar,
@@ -28,7 +28,7 @@ import { PageResponse } from '../../../../models';
   selector: 'app-audit-log-component',
   imports: [
     CommonModule,
-    RouterLink,
+  
     FormsModule,
     LucideAngularModule,
     ButtonComponent,
@@ -45,12 +45,12 @@ export class AuditLogComponent implements OnInit, OnDestroy {
   // Icone
   readonly ArrowLeftIcon = ArrowLeft;
   readonly SearchIcon = Search;
-  readonly FilterIcon = Filter;
+  readonly FilterIcon = ListFilter;
   readonly RefreshIcon = RefreshCw;
   readonly ChevronLeftIcon = ChevronLeft;
   readonly ChevronRightIcon = ChevronRight;
-  readonly AlertCircleIcon = AlertCircle;
-  readonly Loader2Icon = Loader2;
+  readonly AlertCircleIcon = CircleAlert;
+  readonly Loader2Icon = Loader;
   readonly FileTextIcon = FileText;
   readonly UserIcon = User;
   readonly CalendarIcon = Calendar;
@@ -109,7 +109,7 @@ export class AuditLogComponent implements OnInit, OnDestroy {
     this.hasError.set(false);
 
     const action = this.filterAction();
-    const adminId = this.filterAdmin() ? parseInt(this.filterAdmin()) : null;
+    const adminId = this.filterAdmin() ? Number.parseInt(this.filterAdmin()) : null;
 
     let request$;
 

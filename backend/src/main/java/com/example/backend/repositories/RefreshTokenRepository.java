@@ -34,4 +34,12 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
         WHERE rt.token = :token AND rt.expiresAt > :now
         """)
     boolean isTokenValid(@Param("token") String token, @Param("now") LocalDateTime now);
+    
+    /**
+     * Trova tutti i refresh token non scaduti.
+     * PERFORMANCE: Ottimizzato per verificaRefreshToken, carica solo token validi.
+     * Per 17 utenti, performance accettabile. Per più utenti, considerare indice su expiresAt.
+     */
+    @Query("SELECT rt FROM RefreshToken rt WHERE rt.expiresAt > :now")
+    java.util.List<RefreshToken> findAllValid(@Param("now") LocalDateTime now);
 }

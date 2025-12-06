@@ -62,12 +62,15 @@ export function usernameValidator(): ValidatorFn {
  * Validatore per password
  *
  * Regole base (allineate al backend):
- * - Lunghezza minima: 6 caratteri
+ * - Lunghezza minima: 8 caratteri
+ * - Lunghezza massima: 20 caratteri
+ * - Almeno una lettera maiuscola
+ * - Almeno una lettera minuscola
+ * - Almeno un numero
  *
- * @param minLength lunghezza minima (default 6)
  * @returns ValidatorFn
  */
-export function passwordValidator(minLength: number = 6): ValidatorFn {
+export function passwordValidator(): ValidatorFn {
   return (control: AbstractControl): ValidationErrors | null => {
     const value = control.value;
 
@@ -75,10 +78,46 @@ export function passwordValidator(minLength: number = 6): ValidatorFn {
       return null; // Usa required validator separatamente
     }
 
-    if (value.length < minLength) {
+    // Lunghezza 8-20 caratteri
+    if (value.length < 8) {
       return {
         password: {
-          message: `Password deve essere almeno ${minLength} caratteri`,
+          message: 'Password deve essere almeno 8 caratteri',
+        },
+      };
+    }
+
+    if (value.length > 20) {
+      return {
+        password: {
+          message: 'Password non può superare 20 caratteri',
+        },
+      };
+    }
+
+    // Almeno una maiuscola
+    if (!/[A-Z]/.test(value)) {
+      return {
+        password: {
+          message: 'Password deve contenere almeno una lettera maiuscola',
+        },
+      };
+    }
+
+    // Almeno una minuscola
+    if (!/[a-z]/.test(value)) {
+      return {
+        password: {
+          message: 'Password deve contenere almeno una lettera minuscola',
+        },
+      };
+    }
+
+    // Almeno un numero
+    if (!/[0-9]/.test(value)) {
+      return {
+        password: {
+          message: 'Password deve contenere almeno un numero',
         },
       };
     }
@@ -138,6 +177,46 @@ export function strongPasswordValidator(): ValidatorFn {
       return {
         strongPassword: {
           message: `Password deve contenere: ${errors.join(', ')}`,
+        },
+      };
+    }
+
+    return null;
+  };
+}
+
+/**
+ * Validatore per email con dominio specifico
+ *
+ * Regole:
+ * - Email deve terminare con @marconirovereto.it
+ * - Formato email valido
+ *
+ * @returns ValidatorFn
+ */
+export function schoolEmailValidator(): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const value = control.value;
+
+    if (!value) {
+      return null; // Usa required validator separatamente
+    }
+
+    // Verifica formato email base
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) {
+      return {
+        email: {
+          message: 'Inserisci un indirizzo email valido',
+        },
+      };
+    }
+
+    // Verifica dominio specifico
+    if (!value.toLowerCase().endsWith('@marconirovereto.it')) {
+      return {
+        schoolEmail: {
+          message: 'Devi usare un indirizzo email @marconirovereto.it',
         },
       };
     }

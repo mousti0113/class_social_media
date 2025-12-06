@@ -9,7 +9,7 @@ public class InviaMessaggioRequestDTO {
     private Long destinatarioId;
 
     @NotBlank(message = "Contenuto messaggio è obbligatorio")
-    @Size(max = 5000, message = "Il messaggio non può superare 5000 caratteri")
+    @Size(min = 1, max = 5000, message = "Il messaggio deve essere tra 1 e 5000 caratteri")
     private String contenuto;
 
 

@@ -105,7 +105,7 @@ public class WebSocketController {
         }
 
         //  Verifica che il destinatario esista e sia attivo
-        Optional<User> recipientOpt = userRepository.findByUsername(request.getRecipientUsername());
+        Optional<User> recipientOpt = userRepository.findByUsernameAndIsActiveTrue(request.getRecipientUsername());
 
         if (recipientOpt.isEmpty()) {
             log.warn("Typing indicator: destinatario '{}' non trovato (richiesto da {})",

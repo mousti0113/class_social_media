@@ -83,10 +83,12 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, Lo
 
     /**
      * Trova l'ultimo messaggio scambiato con ogni persona con cui l'utente ha conversato.
-
+     * PERFORMANCE: Usa LEFT JOIN FETCH per caricare sender e receiver ed evitare N+1 query.
      */
     @Query("""
         SELECT dm FROM DirectMessage dm
+        LEFT JOIN FETCH dm.sender
+        LEFT JOIN FETCH dm.receiver
         WHERE dm.id IN (
             SELECT MAX(dm2.id) FROM DirectMessage dm2
             WHERE (dm2.sender.id = :userId OR dm2.receiver.id = :userId)

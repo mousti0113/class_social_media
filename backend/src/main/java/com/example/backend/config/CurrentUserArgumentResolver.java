@@ -70,9 +70,9 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
 
         log.debug("Resolving current user: {}", username);
 
-        return userRepository.findByUsername(username)
+        return userRepository.findByUsernameAndIsActiveTrue(username)
                 .orElseThrow(() -> {
-                    log.error("User not found in database: {}", username);
+                    log.error("User not found or not active in database: {}", username);
                     return new ResourceNotFoundException(ENTITY_USER, FIELD_USERNAME, username);
                 });
     }

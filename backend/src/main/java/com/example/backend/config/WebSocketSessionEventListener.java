@@ -85,8 +85,8 @@ public class WebSocketSessionEventListener {
                     log.debug("UserSession aggiornata per {}", username);
                 } else {
                     // Nuova sessione, viene creata
-                    User userEntity = userRepository.findByUsername(username)
-                            .orElseThrow(() -> new RuntimeException("Utente non trovato: " + username));
+                    User userEntity = userRepository.findByUsernameAndIsActiveTrue(username)
+                            .orElseThrow(() -> new RuntimeException("Utente non trovato o non attivo: " + username));
 
                     UserSession newSession = UserSession.builder()
                             .user(userEntity)

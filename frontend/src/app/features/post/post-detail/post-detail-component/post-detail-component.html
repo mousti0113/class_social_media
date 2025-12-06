@@ -141,10 +141,9 @@
             } @else {
               <!-- Contenuto normale -->
               @if (postData.contenuto) {
-                <p 
-                  class="text-lg text-gray-900 dark:text-white whitespace-pre-wrap break-words leading-relaxed"
-                  [innerHTML]="postData.contenuto | highlightMention"
-                ></p>
+                <p class="text-lg text-gray-900 dark:text-white whitespace-pre-wrap break-words leading-relaxed">
+                  <app-safe-mention-text [content]="postData.contenuto" />
+                </p>
               }
             }
           </div>

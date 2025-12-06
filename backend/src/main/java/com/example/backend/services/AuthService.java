@@ -5,7 +5,7 @@ import com.example.backend.dtos.request.RegistrazioneRequestDTO;
 import com.example.backend.dtos.request.RefreshTokenRequestDTO;
 import com.example.backend.dtos.response.LoginResponseDTO;
 import com.example.backend.dtos.response.RefreshTokenResponseDTO;
-import com.example.backend.events.WelcomeEmailEvent;
+import com.example.backend.exception.EmailNotVerifiedException;
 import com.example.backend.exception.InvalidCredentialsException;
 import com.example.backend.exception.InvalidTokenException;
 import com.example.backend.exception.ResourceAlreadyExistsException;
@@ -17,7 +17,6 @@ import com.example.backend.repositories.UserRepository;
 import com.example.backend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -41,7 +40,8 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final RefreshTokenService refreshTokenService;
     private final UserMapper userMapper;
-    private final ApplicationEventPublisher eventPublisher;
+    private final EmailVerificationService emailVerificationService;
+    private final ValidationService validationService;
     private static  final String AUTHORIZATION_TYPE="Bearer";
 
     /**
@@ -51,8 +51,8 @@ public class AuthService {
     public LoginResponseDTO registrazione(RegistrazioneRequestDTO request) {
         log.info("Tentativo di registrazione per username: {}", request.getUsername());
 
-        // Valida limite studenti (17 max)
-        userRepository.validateStudentLimit();
+        // Valida limite studenti (configurabile tramite app.max-students)
+        validationService.validateStudentLimit();
 
         // Verifica username unico
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -66,31 +66,35 @@ public class AuthService {
             throw new ResourceAlreadyExistsException("Utente", "email", request.getEmail());
         }
 
-        // Crea nuovo utente
+        // Valida dominio email (deve finire con @marconirovereto.it)
+        if (!request.getEmail().toLowerCase().endsWith("@marconirovereto.it")) {
+            log.warn("Tentativo di registrazione con email non valida: {}", request.getEmail());
+            throw new IllegalArgumentException("L'email deve essere del dominio @marconirovereto.it");
+        }
+
+        // Crea nuovo utente (NON ATTIVO fino a verifica email)
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getNomeCompleto())
                 .isAdmin(false)
-                .isActive(true)
+                .isActive(false) // L'utente deve verificare l'email
                 .build();
 
         user = userRepository.save(user);
-        log.info("Utente registrato con successo: {} (ID: {})", user.getUsername(), user.getId());
+        log.info("Utente registrato (non attivo) con successo: {} (ID: {})", user.getUsername(), user.getId());
 
-        // Pubblica evento per invio email di benvenuto asincrona
-        eventPublisher.publishEvent(new WelcomeEmailEvent(user.getEmail(), user.getUsername()));
-        log.debug("Evento WelcomeEmailEvent pubblicato per utente: {}", user.getUsername());
+        // Crea token di verifica e invia email
+        emailVerificationService.createVerificationToken(user);
+        log.debug("Token di verifica creato per utente: {}", user.getUsername());
 
-        // Genera token con tutti i dati utente
-        String accessToken = jwtTokenProvider.generateAccessToken(user);
-        RefreshToken refreshToken = refreshTokenService.creaRefreshToken(user.getId());
-
+        // NON generiamo token JWT perché l'utente non è ancora attivo
+        // Restituiamo un response senza token che indica che deve verificare l'email
         return LoginResponseDTO.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken.getToken())
-                .type(AUTHORIZATION_TYPE)
+                .accessToken(null) // Nessun token fino a verifica email
+                .refreshToken(null)
+                .type(null)
                 .user(userMapper.toUtenteResponseDTO(user))
                 .build();
     }
@@ -115,12 +119,18 @@ public class AuthService {
             throw new InvalidCredentialsException();
         }
 
-        // Carica i dettagli utente
-        User user = userRepository.findByUsername(request.getUsername())
+        // Carica i dettagli utente (solo se attivo)
+        User user = userRepository.findByUsernameAndIsActiveTrue(request.getUsername())
                 .orElseThrow(() -> {
-                    log.error("Utente non trovato dopo autenticazione: {}", request.getUsername());
+                    log.error("Utente non trovato o non attivo dopo autenticazione: {}", request.getUsername());
                     return new ResourceNotFoundException("Utente", "username", request.getUsername());
                 });
+
+        // Verifica che l'account sia attivo (email verificata)
+        if (!user.getIsActive().booleanValue()) {
+            log.warn("Tentativo di login con account non verificato: {}", user.getUsername());
+            throw new EmailNotVerifiedException("Devi verificare la tua email prima di accedere. Controlla la tua casella email.");
+        }
 
         // Aggiorna last seen
         user.setLastSeen(LocalDateTime.now());

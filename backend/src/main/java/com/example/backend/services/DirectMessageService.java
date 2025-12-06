@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +34,7 @@ public class DirectMessageService {
     private final MessageMapper messageMapper;
     private final NotificationService notificationService;
     private final HiddenMessageRepository hiddenMessageRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     private static final String ENTITY_MESSAGE = "Messaggio";
     private static final String ENTITY_USER = "Utente";
@@ -72,12 +74,25 @@ public class DirectMessageService {
         message = messageRepository.save(message);
         log.info("Messaggio inviato - ID: {}", message.getId());
 
+        MessageResponseDTO response = messageMapper.toMessaggioResponseDTO(message);
 
+        // Invia messaggio real-time via WebSocket al destinatario
+        try {
+            messagingTemplate.convertAndSendToUser(
+                receiver.getUsername(),
+                "/queue/messages",
+                response
+            );
+            log.debug("Messaggio WebSocket inviato a utente: {}", receiver.getUsername());
+        } catch (Exception e) {
+            // Non blocca l'invio se WebSocket fallisce (utente offline)
+            log.warn("Impossibile inviare messaggio WebSocket a {}: {}", receiver.getUsername(), e.getMessage());
+        }
 
         // Crea notifica per il destinatario
         notificationService.creaNotificaMessaggio(receiver.getId(), sender.getId(), message.getId());
 
-        return messageMapper.toMessaggioResponseDTO(message);
+        return response;
     }
 
     /**

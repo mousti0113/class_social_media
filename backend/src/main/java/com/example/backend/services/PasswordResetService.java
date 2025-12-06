@@ -59,8 +59,8 @@ public class PasswordResetService {
     public void requestPasswordReset(String email) {
         log.info("Richiesta reset password per email: {}", email);
 
-        // Cerca l'utente per email
-        User user = userRepository.findByEmail(email).orElse(null);
+        // Cerca l'utente per email (solo se attivo)
+        User user = userRepository.findByEmailAndIsActiveTrue(email).orElse(null);
 
         // Se l'utente non esiste, logga ma non dare errore
        
@@ -141,7 +141,7 @@ public class PasswordResetService {
         User user = resetToken.getUser();
 
         // Verifica che l'account sia ancora attivo
-        if (!user.getIsActive()) {
+        if (!user.getIsActive().booleanValue()) {
             log.warn("Tentativo reset password per account disattivato: {}", user.getEmail());
             throw new InvalidInputException("Account non attivo");
         }

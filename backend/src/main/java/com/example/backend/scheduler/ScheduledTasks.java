@@ -3,6 +3,7 @@ package com.example.backend.scheduler;
 import com.example.backend.repositories.UserSessionRepository;
 import com.example.backend.services.AdminService;
 import com.example.backend.services.DirectMessageService;
+import com.example.backend.services.EmailVerificationService;
 import com.example.backend.services.PasswordResetService;
 import com.example.backend.services.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class ScheduledTasks {
     private final AdminService adminService;
     private final PasswordResetService passwordResetService;
     private final UserSessionRepository userSessionRepository;
+    private final EmailVerificationService emailVerificationService;
 
     /**
      * Pulizia notturna dei messaggi eliminati da entrambi gli utenti.
@@ -112,6 +114,29 @@ public class ScheduledTasks {
             log.info("Pulizia sessioni inattive completata");
         } catch (Exception e) {
             log.error("Errore durante pulizia sessioni inattive", e);
+        }
+    }
+
+    /**
+     * Esegue la pulizia dei token di verifica email scaduti e vecchi.
+     * Cron: ogni giorno alle 01:00 AM
+     */
+    @Scheduled(cron = "0 0 1 * * ?")
+    public void puliziaTokenVerificaEmail() {
+        log.info("Avvio pulizia automatica token di verifica email");
+
+        try {
+            // Elimina token scaduti non verificati
+            int expiredDeleted = emailVerificationService.cleanupExpiredTokens();
+            log.info("Eliminati {} token scaduti", expiredDeleted);
+
+            // Elimina token verificati vecchi (oltre 30 giorni)
+            int oldVerifiedDeleted = emailVerificationService.cleanupOldVerifiedTokens(30);
+            log.info("Eliminati {} token verificati obsoleti", oldVerifiedDeleted);
+
+            log.info("Pulizia token verifica email completata con successo");
+        } catch (Exception e) {
+            log.error("Errore durante la pulizia dei token di verifica email", e);
         }
     }
 }

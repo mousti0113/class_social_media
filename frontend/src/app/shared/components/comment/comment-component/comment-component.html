@@ -102,10 +102,9 @@
         </div>
       </div>
     } @else {
-      <p 
-        class="mt-1 text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap break-words"
-        [innerHTML]="comment().contenuto | highlightMention"
-      ></p>
+      <p class="mt-1 text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap break-words">
+        <app-safe-mention-text [content]="comment().contenuto" />
+      </p>
     }
 
     <!-- Azioni -->

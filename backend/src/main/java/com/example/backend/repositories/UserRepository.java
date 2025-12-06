@@ -1,7 +1,5 @@
 package com.example.backend.repositories;
 
-
-import com.example.backend.exception.LimitExceededException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,12 +17,17 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
+    // SICUREZZA: Filtra solo utenti attivi per prevenire accesso a account disabilitati
+    Optional<User> findByUsernameAndIsActiveTrue(String username);
+    Optional<User> findByEmailAndIsActiveTrue(String email);
+    
+    // Query senza filtro isActive (per uso interno/admin)
     Optional<User> findByUsername(String username);
     Optional<User> findByEmail(String email);
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
 
-    // Conta tutti gli utenti (17 max, incluso admin)
+    // Conta tutti gli utenti (incluso admin)
     long count();
 
     // Trova l'admin
@@ -41,6 +44,16 @@ public interface UserRepository extends JpaRepository<User, Long> {
         AND s.lastActivity > :threshold
         """)
     List<User> findOnlineUsers(@Param("threshold") LocalDateTime threshold);
+    
+    /**
+     * Carica utenti con eager fetch per ottimizzare N+1 query.
+     * Usato in ottieniConversazioni per caricare sender/receiver in una query.
+     */
+    @Query("""
+        SELECT u FROM User u
+        WHERE u.id IN :userIds
+        """)
+    List<User> findByIdIn(@Param("userIds") List<Long> userIds);
 
     /**
      * Ricerca utenti per username (autocomplete menzioni).
@@ -134,12 +147,4 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Modifying
     @Query("DELETE FROM User u WHERE u.id = :userId")
     int deleteByUserId(@Param("userId") Long userId);
-
-    // Metodo default per validare limite studenti
-    default void validateStudentLimit() {
-        long count = count();
-        if (count >= 17) {
-            throw new LimitExceededException("Limite massimo di 17 studenti raggiunto");
-        }
-    }
 }

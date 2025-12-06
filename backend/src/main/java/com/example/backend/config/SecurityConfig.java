@@ -20,10 +20,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -41,6 +43,9 @@ public class SecurityConfig {
     private final UserDetailsService userDetailsService;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
     private final CustomAccessDeniedHandler accessDeniedHandler;
+    
+    @Value("${cors.allowed-origins}")
+    private String corsAllowedOrigins;
 
     /**
      * Configura la security filter chain
@@ -65,6 +70,8 @@ public class SecurityConfig {
                                 "/api/auth/reset-password",
                                 "/api/auth/validate-reset-token",
                                 "/api/auth/confirm-reset-password",
+                                "/api/auth/verify-email",
+                                "/api/auth/resend-verification",
                                 "/api/users/check/email",
                                 "/api/users/check/username"
                         ).permitAll()
@@ -122,7 +129,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:4200"));
+        
+        // SICUREZZA: CORS origins configurabili da environment variable
+        // Supporta multiple origins separate da virgola: "http://localhost:4200,https://mydomain.com"
+        List<String> allowedOrigins = Arrays.asList(corsAllowedOrigins.split(","));
+        configuration.setAllowedOrigins(allowedOrigins);
+        
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

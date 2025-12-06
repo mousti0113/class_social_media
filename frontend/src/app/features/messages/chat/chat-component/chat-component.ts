@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, signal, computed, ElementRef, ViewChild, AfterViewChecked } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed, ElementRef, viewChild, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -7,6 +7,7 @@ import { Subscription, interval, Subject } from 'rxjs';
 import { switchMap, startWith, takeUntil, finalize } from 'rxjs/operators';
 import { MessageService } from '../../../../core/api/message-service';
 import { UserService } from '../../../../core/api/user-service';
+import { WebsocketService } from '../../../../core/services/websocket-service';
 import { AuthStore } from '../../../../core/stores/auth-store';
 import { OnlineUsersStore } from '../../../../core/stores/online-users-store';
 import { MessageResponseDTO, UserSummaryDTO } from '../../../../models';
@@ -34,17 +35,19 @@ import { SkeletonComponent } from '../../../../shared/ui/skeleton/skeleton-compo
   styleUrl: './chat-component.scss',
 })
 export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
-  @ViewChild('messagesContainer') private messagesContainer?: ElementRef<HTMLDivElement>;
+  private readonly messagesContainer = viewChild<ElementRef<HTMLDivElement>>('messagesContainer');
   
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly messageService = inject(MessageService);
   private readonly userService = inject(UserService);
+  private readonly websocketService = inject(WebsocketService);
   private readonly authStore = inject(AuthStore);
   private readonly onlineUsersStore = inject(OnlineUsersStore);
   
   private routeSub?: Subscription;
-  private pollingStop$ = new Subject<void>();
+  private wsMessagesSub?: Subscription;
+  private readonly pollingStop$ = new Subject<void>();
   private shouldScrollToBottom = false;
   private currentOtherUserId: number | null = null;
   private lastTypingSent = 0;
@@ -97,8 +100,35 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.routeSub = this.route.paramMap.subscribe(params => {
       const userIdParam = params.get('userId');
       if (userIdParam) {
-        const userId = parseInt(userIdParam, 10);
+        const userId = Number.parseInt(userIdParam, 10);
         this.switchToConversation(userId);
+      }
+    });
+
+    // Sottoscrizione ai messaggi WebSocket real-time
+    this.wsMessagesSub = this.websocketService.messages$.subscribe({
+      next: (newMessage: MessageResponseDTO) => {
+        console.log('[Chat] Nuovo messaggio WebSocket ricevuto:', newMessage);
+        
+        // Verifica se il messaggio appartiene alla conversazione corrente
+        const isRelevant = 
+          (newMessage.mittente.id === this.currentOtherUserId && newMessage.destinatario.id === this.currentUserId()) ||
+          (newMessage.destinatario.id === this.currentOtherUserId && newMessage.mittente.id === this.currentUserId());
+        
+        if (isRelevant) {
+          // Aggiungi il messaggio se non esiste già (evita duplicati dal polling)
+          const currentMessages = this.messages();
+          const exists = currentMessages.some(m => m.id === newMessage.id);
+          
+          if (!exists) {
+            this.messages.set([...currentMessages, newMessage]);
+            this.shouldScrollToBottom = true;
+            console.log('[Chat] Messaggio aggiunto alla conversazione');
+          }
+        }
+      },
+      error: (err) => {
+        console.error('[Chat] Errore WebSocket messages:', err);
       }
     });
   }
@@ -112,6 +142,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.stopPolling();
     this.pollingStop$.complete();
     this.routeSub?.unsubscribe();
+    this.wsMessagesSub?.unsubscribe();
   }
 
   ngAfterViewChecked(): void {
@@ -299,8 +330,9 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private scrollToBottom(): void {
-    if (this.messagesContainer) {
-      const el = this.messagesContainer.nativeElement;
+    const container = this.messagesContainer();
+    if (container) {
+      const el = container.nativeElement;
       el.scrollTop = el.scrollHeight;
     }
   }
