@@ -13,6 +13,9 @@ import {
   TrendingUp,
   RefreshCw,
   AlertCircle,
+  Database,
+  Gauge,
+  ScrollText,
 } from 'lucide-angular';
 import { Subject, takeUntil, finalize, forkJoin } from 'rxjs';
 
@@ -117,8 +120,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // Sezioni navigazione rapida
   readonly quickActions = [
-    { label: 'Gestione utenti', route: '/admin/users', icon: Users },
-    { label: 'Moderazione', route: '/admin/moderation', icon: Shield },
+    { label: 'Gestione utenti', route: '/admin/users', icon: Users, description: 'Gestisci utenti, ruoli e permessi' },
+    { label: 'Moderazione', route: '/admin/moderation', icon: Shield, description: 'Modera post e commenti' },
+    { label: 'Audit Log', route: '/admin/audit-log', icon: ScrollText, description: 'Visualizza log delle azioni admin' },
+    { label: 'Rate Limit', route: '/admin/rate-limit', icon: Gauge, description: 'Gestisci limiti di utilizzo' },
+    { label: 'Manutenzione', route: '/admin/system', icon: Database, description: 'Pulizia e manutenzione sistema' },
   ];
 
   ngOnInit(): void {

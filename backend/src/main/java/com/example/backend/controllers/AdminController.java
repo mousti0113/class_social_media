@@ -1,6 +1,7 @@
 package com.example.backend.controllers;
 
 import com.example.backend.config.CurrentUser;
+import com.example.backend.dto.AuditLogDTO;
 import com.example.backend.exception.UnauthorizedException;
 import com.example.backend.models.AdminAuditLog;
 import com.example.backend.models.AzioneAdmin;
@@ -219,15 +220,16 @@ public class AdminController {
      * Ottiene audit log completo
      */
     @GetMapping("/audit-log")
-    public ResponseEntity<Page<AdminAuditLog>> ottieniAuditLog(
+    public ResponseEntity<Page<AuditLogDTO>> ottieniAuditLog(
             @PageableDefault(size = 50, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
 
         log.debug("GET /api/admin/audit-log");
 
         Page<AdminAuditLog> auditLog = adminService.ottieniAuditLog(pageable);
+        Page<AuditLogDTO> dtoPage = auditLog.map(this::convertToDTO);
 
-        return ResponseEntity.ok(auditLog);
+        return ResponseEntity.ok(dtoPage);
     }
 
     /**
@@ -235,7 +237,7 @@ public class AdminController {
      * Ottiene audit log per admin specifico
      */
     @GetMapping("/audit-log/admin/{adminId}")
-    public ResponseEntity<Page<AdminAuditLog>> ottieniAuditLogAdmin(
+    public ResponseEntity<Page<AuditLogDTO>> ottieniAuditLogAdmin(
             @PathVariable Long adminId,
             @PageableDefault(size = 50, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
@@ -243,8 +245,9 @@ public class AdminController {
         log.debug("GET /api/admin/audit-log/admin/{}", adminId);
 
         Page<AdminAuditLog> auditLog = adminService.ottieniAuditLogAdmin(adminId, pageable);
+        Page<AuditLogDTO> dtoPage = auditLog.map(this::convertToDTO);
 
-        return ResponseEntity.ok(auditLog);
+        return ResponseEntity.ok(dtoPage);
     }
 
     /**
@@ -252,7 +255,7 @@ public class AdminController {
      * Ottiene audit log per azione specifica
      */
     @GetMapping("/audit-log/action/{action}")
-    public ResponseEntity<Page<AdminAuditLog>> ottieniAuditLogPerAzione(
+    public ResponseEntity<Page<AuditLogDTO>> ottieniAuditLogPerAzione(
             @PathVariable AzioneAdmin action,
             @PageableDefault(size = 50, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
@@ -260,8 +263,9 @@ public class AdminController {
         log.debug("GET /api/admin/audit-log/action/{}", action);
 
         Page<AdminAuditLog> auditLog = adminService.ottieniAuditLogPerAzione(action, pageable);
+        Page<AuditLogDTO> dtoPage = auditLog.map(this::convertToDTO);
 
-        return ResponseEntity.ok(auditLog);
+        return ResponseEntity.ok(dtoPage);
     }
 
     /**
@@ -293,5 +297,22 @@ public class AdminController {
         if (! user.getIsAdmin().booleanValue()) {
             throw new UnauthorizedException("Accesso negato: privilegi admin richiesti");
         }
+    }
+
+    /**
+     * Converte AdminAuditLog in AuditLogDTO
+     */
+    private AuditLogDTO convertToDTO(AdminAuditLog log) {
+        return AuditLogDTO.builder()
+                .id(log.getId())
+                .adminId(log.getAdmin().getId())
+                .adminUsername(log.getAdmin().getUsername())
+                .azione(log.getAzione())
+                .dettagli(log.getDescrizione())
+                .targetType(log.getTargetType())
+                .targetId(log.getTargetId())
+                .ipAddress(log.getIpAddress())
+                .createdAt(log.getCreatedAt())
+                .build();
     }
 }

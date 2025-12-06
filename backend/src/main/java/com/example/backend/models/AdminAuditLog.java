@@ -1,5 +1,6 @@
 package com.example.backend.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,6 +31,9 @@ public class AdminAuditLog {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "admin_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "sessions", "posts", "comments", "likes", 
+                           "followers", "following", "notifications", "sentMessages", "receivedMessages", 
+                           "reportsMade", "reportsReceived"})
     private User admin;
 
     @Enumerated(EnumType.STRING)
@@ -49,6 +53,9 @@ public class AdminAuditLog {
     // Riferimento diretto all'utente target (se applicabile)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "target_user_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "sessions", "posts", "comments", "likes", 
+                           "followers", "following", "notifications", "sentMessages", "receivedMessages", 
+                           "reportsMade", "reportsReceived"})
     private User targetUser;
 
     @Column(name = "ip_address", length = 45)

@@ -18,14 +18,14 @@
           <lucide-icon 
             [img]="SearchIcon" 
             [size]="18" 
-            class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" 
+            class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" 
           />
           <input
             type="text"
             [value]="searchQuery()"
             (input)="onSearchInput($event)"
             placeholder="Cerca utenti o post..."
-            class="w-full pl-10 pr-10 py-2.5 rounded-full bg-gray-100 dark:bg-gray-800 border-0 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            class="w-full pl-14 pr-10 py-2.5 rounded-full bg-gray-100 dark:bg-gray-800 border-0 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
           @if (searchQuery()) {
             <button

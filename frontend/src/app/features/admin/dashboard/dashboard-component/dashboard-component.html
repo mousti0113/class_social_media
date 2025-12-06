@@ -106,18 +106,21 @@
       <!-- Quick Actions -->
       <section>
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Azioni rapide
+          Sezioni amministrazione
         </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           @for (action of quickActions; track action.route) {
             <a
               [routerLink]="action.route"
-              class="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 hover:shadow-md transition-all group"
+              class="flex flex-col gap-3 p-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-600 hover:shadow-md transition-all group"
             >
-              <div class="w-10 h-10 rounded-full bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <lucide-icon [img]="action.icon" [size]="20" />
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <lucide-icon [img]="action.icon" [size]="20" />
+                </div>
+                <span class="font-semibold text-gray-900 dark:text-white">{{ action.label }}</span>
               </div>
-              <span class="font-medium text-gray-900 dark:text-white">{{ action.label }}</span>
+              <p class="text-sm text-gray-600 dark:text-gray-400">{{ action.description }}</p>
             </a>
           }
         </div>

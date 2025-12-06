@@ -37,6 +37,30 @@ export const adminRoutes: Routes = [
           ),
         title: 'Moderazione - beetUs',
       },
+      {
+        path: 'audit-log',
+        loadComponent: () =>
+          import('./audit-log/audit-log-component/audit-log-component').then(
+            (m) => m.AuditLogComponent
+          ),
+        title: 'Audit Log - beetUs',
+      },
+      {
+        path: 'rate-limit',
+        loadComponent: () =>
+          import('./rate-limit/rate-limit-component/rate-limit-component').then(
+            (m) => m.RateLimitComponent
+          ),
+        title: 'Rate Limit - beetUs',
+      },
+      {
+        path: 'system',
+        loadComponent: () =>
+          import('./system/system-maintenance-component/system-maintenance-component').then(
+            (m) => m.SystemMaintenanceComponent
+          ),
+        title: 'Manutenzione Sistema - beetUs',
+      },
     ],
   },
 ];
