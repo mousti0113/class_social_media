@@ -1,5 +1,5 @@
 import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
@@ -27,6 +27,7 @@ import { ThemeStore, Theme } from '../../../core/stores/theme-store';
 import { AuthService } from '../../../core/auth/services/auth-service';
 import { ToastService } from '../../../core/services/toast-service';
 import { DialogService } from '../../../core/services/dialog-service';
+import { CloudinaryStorageService } from '../../../core/services/cloudinary-storage-service';
 import { AvatarComponent } from '../../../shared/ui/avatar/avatar-component/avatar-component';
 import { ButtonComponent } from '../../../shared/ui/button/button-component/button-component';
 import { AggiornaProfiloRequestDTO, CambiaPasswordRequestDTO, DisattivaAccountRequestDTO } from '../../../models';
@@ -48,12 +49,14 @@ type ThemeMode = Theme | 'system';
 })
 export class SettingsComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly userService = inject(UserService);
   private readonly authStore = inject(AuthStore);
   private readonly themeStore = inject(ThemeStore);
   private readonly authService = inject(AuthService);
   private readonly toastService = inject(ToastService);
   private readonly dialogService = inject(DialogService);
+  private readonly cloudinaryService = inject(CloudinaryStorageService);
   private readonly destroy$ = new Subject<void>();
 
   // Icone
@@ -211,40 +214,77 @@ export class SettingsComponent implements OnInit, OnDestroy {
     
     if (!file) return;
 
-    // Validazione
-    if (!file.type.startsWith('image/')) {
-      this.toastService.error('Il file deve essere un\'immagine');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      this.toastService.error('L\'immagine non può superare i 5MB');
-      return;
-    }
-
     this.isUploadingImage.set(true);
 
-    // Simula upload a Cloudinary (in produzione useresti un servizio reale)
-    // Per ora convertiamo in base64 come placeholder
-    const reader = new FileReader();
-    reader.onload = () => {
-      // In produzione qui caricheresti su Cloudinary e useresti l'URL restituito
-      this.profilePictureUrl.set(reader.result as string);
-      this.isUploadingImage.set(false);
-      this.toastService.success('Immagine caricata. Salva per applicare le modifiche.');
-    };
-    reader.onerror = () => {
-      this.isUploadingImage.set(false);
-      this.toastService.error('Errore durante il caricamento dell\'immagine');
-    };
-    reader.readAsDataURL(file);
+    // Upload su Cloudinary
+    this.cloudinaryService.uploadImage(file, 'profile', (progress) => {
+      // Opzionale: mostra barra di progresso
+      console.log(`Upload: ${progress}%`);
+    })
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => this.isUploadingImage.set(false))
+      )
+      .subscribe({
+        next: (response) => {
+          this.profilePictureUrl.set(response.secureUrl);
+          this.toastService.success('Immagine caricata. Salva per applicare le modifiche.');
+        },
+        error: (error) => {
+          const message = error.message || 'Errore durante il caricamento dell\'immagine';
+          this.toastService.error(message);
+        }
+      });
+
+    // Reset input per permettere ri-caricamento stesso file
+    input.value = '';
   }
 
   /**
    * Rimuove immagine profilo
    */
-  removeProfileImage(): void {
-    this.profilePictureUrl.set(null);
+  async removeProfileImage(): Promise<void> {
+    const currentUrl = this.profilePictureUrl();
+    
+    if (!currentUrl) return;
+
+    // Conferma eliminazione
+    const confirmed = await this.dialogService.confirm({
+      title: 'Rimuovi foto profilo',
+      message: 'Sei sicuro di voler rimuovere la foto profilo?',
+      confirmText: 'Rimuovi',
+      cancelText: 'Annulla',
+    });
+
+    if (!confirmed) return;
+
+    this.isUploadingImage.set(true);
+
+    // Se l'immagine è su Cloudinary, eliminala
+    if (currentUrl.includes('cloudinary.com')) {
+      this.cloudinaryService.deleteImage(currentUrl)
+        .pipe(
+          takeUntil(this.destroy$),
+          finalize(() => this.isUploadingImage.set(false))
+        )
+        .subscribe({
+          next: () => {
+            this.profilePictureUrl.set(null);
+            this.toastService.success('Foto profilo rimossa. Salva per applicare le modifiche.');
+          },
+          error: (error) => {
+            console.error('Errore eliminazione immagine:', error);
+            // Anche se l'eliminazione da Cloudinary fallisce, permetti di rimuovere l'URL
+            this.profilePictureUrl.set(null);
+            this.toastService.warning('Immagine rimossa dal profilo. Salva per applicare le modifiche.');
+          }
+        });
+    } else {
+      // URL non Cloudinary (es. base64 vecchio), rimuovi solo localmente
+      this.profilePictureUrl.set(null);
+      this.isUploadingImage.set(false);
+      this.toastService.success('Foto profilo rimossa. Salva per applicare le modifiche.');
+    }
   }
 
   /**
@@ -366,7 +406,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
    * Torna indietro
    */
   goBack(): void {
-    this.router.navigate(['/']);
+    this.location.back();
   }
 }
 

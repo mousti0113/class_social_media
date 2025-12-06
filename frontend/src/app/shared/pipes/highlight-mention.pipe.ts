@@ -27,7 +27,7 @@ export class HighlightMentionPipe implements PipeTransform {
     // Sostituisce le menzioni con span stilizzati
     const highlighted = value.replace(
       mentionRegex,
-      '<a href="/profile/$1" class="mention-link text-primary-500 hover:text-primary-600 dark:text-primary-400 dark:hover:text-primary-300 font-medium hover:underline">@$1</a>'
+      '<a href="/search?q=$1&tab=users" class="mention-link text-primary-500 hover:text-primary-600 dark:text-primary-400 dark:hover:text-primary-300 font-medium hover:underline">@$1</a>'
     );
 
     // Sanitizza l'HTML per sicurezza

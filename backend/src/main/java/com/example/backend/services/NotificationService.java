@@ -553,6 +553,24 @@ public class NotificationService {
     }
 
     /**
+     * Elimina TUTTE le notifiche di un utente (lette e non lette).
+     * <p>
+     * Funzionalità di pulizia totale delle notifiche.
+     *
+     * @param userId L'ID dell'utente
+     * @return Il numero di notifiche eliminate
+     */
+    @Transactional
+    public int eliminaTutteLeNotifiche(Long userId) {
+        log.debug("Eliminazione TUTTE le notifiche per utente {}", userId);
+
+        int count = notificationRepository.deleteAllByUserId(userId);
+
+        log.info("Eliminate {} notifiche totali per utente {}", count, userId);
+        return count;
+    }
+
+    /**
      * Pulisce automaticamente le notifiche vecchie dal database.
      * <p>
      * Questo metodo viene chiamato da uno scheduled job per mantenere

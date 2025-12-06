@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { LucideAngularModule, Settings, ImageIcon } from 'lucide-angular';
+import { LucideAngularModule, Settings, ImageIcon, ArrowLeft } from 'lucide-angular';
 import { Subject, takeUntil, forkJoin, finalize } from 'rxjs';
 
 import { UserService } from '../../../core/api/user-service';
@@ -46,6 +46,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   // Icons
   readonly SettingsIcon = Settings;
   readonly ImageIcon = ImageIcon;
+  readonly ArrowLeftIcon = ArrowLeft;
 
   // State
   readonly user = signal<UserResponseDTO | null>(null);
@@ -101,7 +102,17 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.route.paramMap.pipe(takeUntil(this.destroy$)).subscribe((params) => {
       const userId = params.get('id');
       if (userId) {
-        this.loadProfile(+userId);
+        const parsedId = Number(userId);
+
+        if (Number.isFinite(parsedId)) {
+          this.loadProfile(parsedId);
+        } else {
+          // Param non numerico (es: username da menzione) → evita chiamate NaN al backend
+          this.error.set('Profilo non valido');
+          this.router.navigate(['/search'], {
+            queryParams: { q: userId, tab: 'users' },
+          });
+        }
       }
     });
   }
@@ -184,6 +195,10 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   goToSettings(): void {
     this.router.navigate(['/settings']);
+  }
+
+  goBack(): void {
+    this.router.navigate(['/']);
   }
 
   onPostDeleted(postId: number): void {

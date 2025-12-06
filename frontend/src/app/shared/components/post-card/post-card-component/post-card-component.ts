@@ -96,6 +96,11 @@ export class PostCardComponent {
   readonly isSaving = signal<boolean>(false);
 
   /**
+   * Stato image preview
+   */
+  readonly isImagePreviewOpen = signal<boolean>(false);
+
+  /**
    * Lunghezza massima contenuto
    */
   readonly MAX_CONTENT_LENGTH = 5000;
@@ -233,6 +238,21 @@ export class PostCardComponent {
         this.toastService.error('Errore nel nascondere il post');
       },
     });
+  }
+
+  /**
+   * Apre l'anteprima dell'immagine
+   */
+  openImagePreview(event: Event): void {
+    event.stopPropagation();
+    this.isImagePreviewOpen.set(true);
+  }
+
+  /**
+   * Chiude l'anteprima dell'immagine
+   */
+  closeImagePreview(): void {
+    this.isImagePreviewOpen.set(false);
   }
 
 }

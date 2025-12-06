@@ -45,6 +45,16 @@
     <div class="max-w-2xl mx-auto">
       <!-- Profile Header -->
       <header class="p-6 pb-4">
+        <!-- Back button -->
+        <button
+          type="button"
+          (click)="goBack()"
+          class="mb-4 p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors"
+          aria-label="Torna indietro"
+        >
+          <lucide-icon [img]="ArrowLeftIcon" [size]="24" />
+        </button>
+
         <!-- Top row: Avatar + Settings -->
         <div class="flex items-start justify-between mb-4">
           <!-- Avatar with online status -->
@@ -54,7 +64,7 @@
               [alt]="user()!.nomeCompleto"
               [name]="user()!.nomeCompleto"
               size="xl"
-              [status]="isOnline() ? 'online' : 'none'"
+              [status]="isOwnProfile() ? 'none' : (isOnline() ? 'online' : 'none')"
               class="ring-4 ring-white dark:ring-gray-900"
             />
           </div>

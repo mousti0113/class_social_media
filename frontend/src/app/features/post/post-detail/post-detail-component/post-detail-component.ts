@@ -78,6 +78,8 @@ export class PostDetailComponent implements OnInit, OnDestroy {
 
   readonly replyingTo = signal<CommentResponseDTO | null>(null);
 
+  readonly isImagePreviewOpen = signal<boolean>(false);
+
   readonly MAX_CONTENT_LENGTH = 5000;
 
   // ========== COMPUTED ==========
@@ -502,5 +504,19 @@ export class PostDetailComponent implements OnInit, OnDestroy {
         this.toastService.error('Impossibile copiare il link');
       }
     }
+  }
+
+  /**
+   * Apre l'anteprima dell'immagine
+   */
+  openImagePreview(): void {
+    this.isImagePreviewOpen.set(true);
+  }
+
+  /**
+   * Chiude l'anteprima dell'immagine
+   */
+  closeImagePreview(): void {
+    this.isImagePreviewOpen.set(false);
   }
 }

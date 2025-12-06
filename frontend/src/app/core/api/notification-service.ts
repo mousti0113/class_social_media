@@ -131,6 +131,19 @@ export class NotificationService {
   deleteReadNotifications(): Observable<DeleteReadNotificationsResponse> {
     return this.http.delete<DeleteReadNotificationsResponse>(`${this.baseUrl}/read`);
   }
+
+  /**
+   * Elimina TUTTE le notifiche dell'utente (lette e non lette)
+   *
+   * Endpoint: DELETE /api/notifications/all
+   * Autenticazione: richiesta
+   *
+   * Funzionalità di pulizia totale delle notifiche
+   * Restituisce il numero di notifiche eliminate
+   */
+  deleteAllNotifications(): Observable<DeleteReadNotificationsResponse> {
+    return this.http.delete<DeleteReadNotificationsResponse>(`${this.baseUrl}/all`);
+  }
 }
 
 /**

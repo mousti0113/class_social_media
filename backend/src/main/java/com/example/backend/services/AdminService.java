@@ -29,6 +29,13 @@ public class AdminService {
     private final NotificationRepository notificationRepository;
     private final AdminAuditLogRepository auditLogRepository;
     private final AdminAuditService auditService;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final UserSessionRepository userSessionRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final HiddenMessageRepository hiddenMessageRepository;
+    private final HiddenPostRepository hiddenPostRepository;
+    private final HiddenCommentRepository hiddenCommentRepository;
+    private final MentionRepository mentionRepository;
 
     private static final String TARGET_TYPE_USER = "USER";
     private static final String TARGET_TYPE_POST = "POST";
@@ -50,27 +57,93 @@ public class AdminService {
                 throw new IllegalStateException("Non è possibile eliminare un account admin");
             }
 
-            // Elimina tutti i contenuti dell'utente
-            eliminaTuttiPost(target.getId());
-            eliminaTuttiCommenti(target.getId());
-            eliminaTuttiLike(target.getId());
-            eliminaTuttiMessaggi(target.getId());
-            eliminaTutteNotifiche(target.getId());
-
-            // Elimina l'utente
-            userRepository.delete(target);
-
-            // Log audit
+            // Log audit PRIMA di eliminare
+            String targetUsername = target.getUsername();
             auditService.logAzioneAdmin(
                     admin,
                     AzioneAdmin.ELIMINA_UTENTE,
-                    "Eliminazione utente " + target.getUsername(),
+                    "Eliminazione utente " + targetUsername,
                     TARGET_TYPE_USER,
                     targetUserId,
-                    target,
+                    null, // Non passare target perché verrà eliminato
                     request);
 
-            log.info("Utente {} eliminato completamente", target.getUsername());
+            // =========================================================================
+            // ELIMINAZIONE COMPLETA UTENTE - ORDINE CRITICO PER RISPETTARE FK CONSTRAINTS
+            // =========================================================================
+            // L'ordine di eliminazione deve rispettare le dipendenze tra tabelle:
+            // 1. Prima eliminare le tabelle che referenziano altre tabelle dell'utente
+            // 2. Poi eliminare le tabelle principali
+            // 3. Infine eliminare l'utente stesso
+            // =========================================================================
+
+            Long userId = target.getId();
+
+            // --- FASE 1: Eliminare record in tabelle con FK verso tabelle principali ---
+
+            // 1.1 Notifiche relative ai messaggi dell'utente (FK: notifications -> direct_messages)
+            int notifMsgDeleted = notificationRepository.deleteByRelatedMessageUserId(userId);
+            log.debug("Eliminate {} notifiche relative ai messaggi dell'utente {}", notifMsgDeleted, userId);
+
+            // 1.2 HiddenMessages relativi ai messaggi dell'utente (FK: hidden_messages -> direct_messages)
+            hiddenMessageRepository.deleteByMessageUserId(userId);
+            log.debug("Eliminati hidden_messages relativi ai messaggi dell'utente {}", userId);
+
+            // 1.3 HiddenPosts relativi ai post dell'utente (FK: hidden_posts -> posts)
+            hiddenPostRepository.deleteByPostUserId(userId);
+            log.debug("Eliminati hidden_posts relativi ai post dell'utente {}", userId);
+
+            // 1.4 HiddenComments relativi ai commenti dell'utente (FK: hidden_comments -> comments)
+            hiddenCommentRepository.deleteByCommentUserId(userId);
+            log.debug("Eliminati hidden_comments relativi ai commenti dell'utente {}", userId);
+
+            // --- FASE 2: Eliminare record nelle tabelle con FK diretta verso users ---
+
+            // 2.1 Notifiche triggerate dall'utente
+            int notifTriggeredDeleted = notificationRepository.deleteByTriggeredByUserId(userId);
+            log.debug("Eliminate {} notifiche triggerate dall'utente {}", notifTriggeredDeleted, userId);
+
+            // 2.2 Notifiche dell'utente (dove user_id = target)
+            eliminaTutteNotifiche(userId);
+
+            // 2.3 Hidden records dell'utente (dove user_id = target)
+            hiddenMessageRepository.deleteByUserId(userId);
+            hiddenPostRepository.deleteByUserId(userId);
+            hiddenCommentRepository.deleteByUserId(userId);
+            log.debug("Eliminati tutti i record hidden dell'utente {}", userId);
+
+            // 2.4 Menzioni (sia come mentioned che come mentioning)
+            mentionRepository.deleteByUserId(userId);
+            log.debug("Eliminate tutte le menzioni dell'utente {}", userId);
+
+            // 2.5 Token e sessioni (FK: refresh_tokens, user_sessions, password_reset_tokens -> users)
+            refreshTokenRepository.deleteByUserId(userId);
+            userSessionRepository.deleteByUserId(userId);
+            passwordResetTokenRepository.deleteByUserId(userId);
+            log.debug("Eliminati token e sessioni dell'utente {}", userId);
+
+            // 2.6 Audit log: NON eliminiamo ma settiamo a NULL il riferimento
+            auditLogRepository.nullifyTargetUser(userId);
+            log.debug("Nullificati riferimenti audit log per utente {}", userId);
+
+            // --- FASE 3: Eliminare contenuti principali dell'utente ---
+
+            // 3.1 Messaggi diretti
+            eliminaTuttiMessaggi(userId);
+
+            // 3.2 Post (cascade elimina commenti e like associati)
+            eliminaTuttiPost(userId);
+
+            // 3.3 Commenti su post di altri
+            eliminaTuttiCommenti(userId);
+
+            // 3.4 Like su post di altri
+            eliminaTuttiLike(userId);
+
+            // --- FASE 4: Eliminare l'utente ---
+            userRepository.deleteByUserId(targetUserId);
+
+            log.info("Utente {} eliminato completamente", targetUsername);
         } else {
             throw new InvalidInputException("ID admin e ID utente target sono richiesti");
         }
@@ -363,16 +436,14 @@ public class AdminService {
             long totaleMessaggi = messageRepository.count();
 
             Map<String, Object> stats = new HashMap<>();
-            stats.put("utenti", Map.of(
-                    "totale", totaleUtenti,
-                    "attivi", utentiAttivi,
-                    "admin", utentiAdmin,
-                    "disattivati", totaleUtenti - utentiAttivi));
-            stats.put("contenuti", Map.of(
-                    "posts", totalePosts,
-                    "commenti", totaleCommenti,
-                    "likes", totaleLikes,
-                    "messaggi", totaleMessaggi));
+            stats.put("totalUsers", totaleUtenti);
+            stats.put("activeUsers", utentiAttivi);
+            stats.put("adminUsers", utentiAdmin);
+            stats.put("disabledUsers", totaleUtenti - utentiAttivi);
+            stats.put("totalPosts", totalePosts);
+            stats.put("totalComments", totaleCommenti);
+            stats.put("totalLikes", totaleLikes);
+            stats.put("totalMessages", totaleMessaggi);
 
             auditService.logAzioneAdmin(
                     admin,
@@ -479,6 +550,17 @@ public class AdminService {
         List<Post> posts = postRepository.findByUserId(userId);
         int count = posts.size();
 
+        if (count == 0) {
+            return 0;
+        }
+
+        // Prima elimina notifiche collegate ai post dell'utente per evitare vincoli FK
+        List<Long> postIds = posts.stream()
+                .map(Post::getId)
+                .toList();
+        int notifDeleted = notificationRepository.deleteByRelatedPostIdIn(postIds);
+        log.debug("Eliminate {} notifiche associate a {} post dell'utente {}", notifDeleted, count, userId);
+
         // L'eliminazione dei post eliminerà in cascade:
         // - tutti i commenti (via CascadeType.ALL)
         // - tutti i like (via CascadeType.ALL)
@@ -509,9 +591,9 @@ public class AdminService {
 
         // Ottieni lista dei post_id che verranno affetti
         List<Long> affectedPostIds = comments.stream()
-                .map(c -> c.getPost().getId())
-                .distinct()
-                .toList();
+            .map(c -> c.getPost().getId())
+            .distinct()
+            .toList();
 
         // Elimina tutti i commenti
         commentRepository.deleteAll(comments);
@@ -563,9 +645,7 @@ public class AdminService {
      * 
      */
     private void eliminaTuttiMessaggi(Long userId) {
-        List<DirectMessage> messages = messageRepository.findAllByUserId(userId);
-        int count = messages.size();
-        messageRepository.deleteAll(messages);
+        int count = messageRepository.deleteByUserId(userId);
         log.debug("Eliminati {} messaggi dell'utente {}", count, userId);
     }
 

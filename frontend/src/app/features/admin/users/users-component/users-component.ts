@@ -336,6 +336,12 @@ export class UsersComponent implements OnInit, OnDestroy {
   async deleteUser(user: AdminUserDTO): Promise<void> {
     this.closeDropdown();
 
+    // Controllo preventivo: se l'utente è admin, mostra errore
+    if (user.isAdmin) {
+      this.toastService.error('Non è possibile eliminare un account amministratore. Rimuovi prima i privilegi admin.');
+      return;
+    }
+
     const confirmed = await this.dialogService.confirmDangerous({
       title: 'Elimina utente',
       message: `Sei sicuro di voler eliminare DEFINITIVAMENTE l'account di "${user.username}"? Questa azione non può essere annullata e tutti i dati dell'utente verranno rimossi.`,
@@ -358,8 +364,14 @@ export class UsersComponent implements OnInit, OnDestroy {
           this.users.update(users => users.filter(u => u.id !== user.id));
           this.totalElements.update(n => n - 1);
         },
-        error: () => {
-          this.toastService.error('Errore durante l\'eliminazione');
+        error: (err) => {
+          // Gestione errore specifico per admin
+          const errorMessage = err?.error?.message || err?.message || '';
+          if (errorMessage.toLowerCase().includes('admin')) {
+            this.toastService.error('Non è possibile eliminare un account amministratore');
+          } else {
+            this.toastService.error('Errore durante l\'eliminazione');
+          }
         }
       });
   }

@@ -114,6 +114,16 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, Lo
     List<DirectMessage> findAllByUserId(@Param("userId") Long userId);
 
     /**
+     * Elimina tutti i messaggi in cui l'utente è mittente o destinatario.
+     * Usato per l'eliminazione dell'account senza caricare le entità in memoria.
+     *
+     * @return numero di record eliminati
+     */
+    @Modifying
+    @Query("DELETE FROM DirectMessage dm WHERE dm.sender.id = :userId OR dm.receiver.id = :userId")
+    int deleteByUserId(@Param("userId") Long userId);
+
+    /**
      * Cerca messaggi per contenuto (case-insensitive).
      * Cerca solo nei messaggi visibili per l'utente.
      */

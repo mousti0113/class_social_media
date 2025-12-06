@@ -21,7 +21,7 @@
 
     <!-- Menu azioni (solo per owner/admin) -->
     @if (post() && (isOwner() || isAdmin())) {
-      <app-dropdown position="bottom-end">
+      <app-dropdown placement="bottom-end">
         <button
           trigger
           type="button"
@@ -156,8 +156,9 @@
               <img
                 [src]="postData.imageUrl"
                 alt="Immagine post"
-                class="w-full max-h-[70vh] object-contain bg-gray-100 dark:bg-gray-800"
+                class="w-full max-h-[70vh] object-contain bg-gray-100 dark:bg-gray-800 cursor-pointer hover:opacity-90 transition-opacity"
                 loading="lazy"
+                (click)="openImagePreview()"
               />
             </div>
           }
@@ -265,3 +266,29 @@
     }
   </main>
 </div>
+
+<!-- Image Preview Modal -->
+@if (isImagePreviewOpen() && post()?.imageUrl) {
+  <div
+    class="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
+    (click)="closeImagePreview()"
+  >
+    <!-- Close button -->
+    <button
+      type="button"
+      class="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
+      (click)="closeImagePreview()"
+      aria-label="Chiudi anteprima"
+    >
+      <lucide-icon [img]="XIcon" [size]="24" />
+    </button>
+
+    <!-- Image -->
+    <img
+      [src]="post()!.imageUrl!"
+      [alt]="'Immagine del post di ' + post()!.autore.nomeCompleto"
+      class="max-w-full max-h-full object-contain"
+      (click)="$event.stopPropagation()"
+    />
+  </div>
+}

@@ -53,6 +53,7 @@ public class UserService {
     // Costanti per messaggi di errore standardizzati
     private static final String ENTITY_USER = "Utente";
     private static final String FIELD_ID = "id";
+    private static final int MAX_PROFILE_PICTURE_URL_LENGTH = 2048;
 
     /**
      * Ottiene il profilo completo dell'utente corrente.
@@ -123,7 +124,11 @@ public class UserService {
 
         // Aggiorna URL immagine profilo se fornito
         if (request.getProfilePictureUrl() != null) {
-            user.setProfilePictureUrl(request.getProfilePictureUrl().trim());
+            String trimmedUrl = request.getProfilePictureUrl().trim();
+            if (trimmedUrl.length() > MAX_PROFILE_PICTURE_URL_LENGTH) {
+                throw new InvalidInputException("L'URL dell'immagine profilo è troppo lungo");
+            }
+            user.setProfilePictureUrl(trimmedUrl);
         }
 
         user = userRepository.save(user);
@@ -253,7 +258,7 @@ public class UserService {
         Map<String, Object> stats = new HashMap<>();
         stats.put("postsCount", postsCount);
         stats.put("commentsCount", commentsCount);
-        stats.put("likesReceived", likesReceived);
+        stats.put("likesReceivedCount", likesReceived);
         stats.put("totalInteractions", postsCount + commentsCount);
 
         return stats;

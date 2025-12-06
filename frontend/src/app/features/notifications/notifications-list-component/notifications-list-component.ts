@@ -184,15 +184,20 @@ export class NotificationsListComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Elimina le notifiche lette
+   * Elimina TUTTE le notifiche (lette e non lette)
    */
-  deleteReadNotifications(): void {
-    this.notificationService.deleteReadNotifications()
+  deleteAllNotifications(): void {
+    this.notificationService.deleteAllNotifications()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
-          this.notifications.update(notifs => notifs.filter(n => !n.isRead));
-          this.toastService.success(`${response.deletedCount} notifiche eliminate`);
+          this.notifications.set([]);
+          this.notificationStore.loadUnreadCount();
+          if (response.deletedCount > 0) {
+            this.toastService.success(`${response.deletedCount} notifiche eliminate`);
+          } else {
+            this.toastService.info('Nessuna notifica da eliminare');
+          }
         },
         error: () => {
           this.toastService.error('Errore durante l\'eliminazione');

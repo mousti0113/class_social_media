@@ -5,6 +5,7 @@ import com.example.backend.models.AzioneAdmin;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -34,4 +35,12 @@ public interface AdminAuditLogRepository extends JpaRepository<AdminAuditLog, Lo
 
     // Ultime N azioni
     Page<AdminAuditLog> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    /**
+     * Imposta a NULL il riferimento target_user_id quando un utente viene eliminato.
+     * Non eliminiamo i log per mantenere la tracciabilità delle azioni admin.
+     */
+    @Modifying
+    @Query("UPDATE AdminAuditLog a SET a.targetUser = NULL WHERE a.targetUser.id = :userId")
+    void nullifyTargetUser(@Param("userId") Long userId);
 }

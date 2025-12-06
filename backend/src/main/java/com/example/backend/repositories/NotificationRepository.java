@@ -115,6 +115,14 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     void deleteByUserId(Long userId);
 
     /**
+     * Elimina tutte le notifiche di un utente e restituisce il conteggio.
+     * Usato per l'endpoint "elimina tutte le notifiche".
+     */
+    @Modifying
+    @Query("DELETE FROM Notification n WHERE n.user.id = :userId")
+    int deleteAllByUserId(@Param("userId") Long userId);
+
+    /**
      * Elimina tutte le notifiche associate a un post specifico.
      * 
      * @param postId ID del post
@@ -123,4 +131,27 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Modifying
     @Query("DELETE FROM Notification n WHERE n.relatedPost.id = :postId")
     int deleteByRelatedPostId(@Param("postId") Long postId);
+
+    /**
+     * Elimina tutte le notifiche associate a una lista di post in un'unica operazione.
+     */
+    @Modifying
+    @Query("DELETE FROM Notification n WHERE n.relatedPost.id IN :postIds")
+    int deleteByRelatedPostIdIn(@Param("postIds") List<Long> postIds);
+
+    /**
+     * Elimina tutte le notifiche associate ai messaggi di un utente (mittente o destinatario).
+     * Necessario per eliminare le notifiche PRIMA di eliminare i messaggi.
+     */
+    @Modifying
+    @Query("DELETE FROM Notification n WHERE n.relatedMessage.id IN (SELECT dm.id FROM DirectMessage dm WHERE dm.sender.id = :userId OR dm.receiver.id = :userId)")
+    int deleteByRelatedMessageUserId(@Param("userId") Long userId);
+
+    /**
+     * Elimina tutte le notifiche triggerate da un utente.
+     * Necessario per eliminazione completa dell'utente.
+     */
+    @Modifying
+    @Query("DELETE FROM Notification n WHERE n.triggeredByUser.id = :userId")
+    int deleteByTriggeredByUserId(@Param("userId") Long userId);
 }

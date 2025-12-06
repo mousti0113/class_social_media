@@ -5,6 +5,7 @@ import com.example.backend.exception.LimitExceededException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -125,6 +126,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * Usato per rimuovere il riferimento all'immagine dopo l'eliminazione.
      */
     Optional<User> findByProfilePictureUrl(String profilePictureUrl);
+
+    /**
+     * Elimina un utente per ID senza caricare l'entità.
+     * Evita ConcurrentModificationException durante cascade su collezioni lazy.
+     */
+    @Modifying
+    @Query("DELETE FROM User u WHERE u.id = :userId")
+    int deleteByUserId(@Param("userId") Long userId);
 
     // Metodo default per validare limite studenti
     default void validateStudentLimit() {

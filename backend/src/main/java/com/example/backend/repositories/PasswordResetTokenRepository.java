@@ -35,4 +35,12 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
     @Modifying
     @Query("DELETE FROM PasswordResetToken prt WHERE prt.expiresAt < :now OR prt.isUsed = true")
     void deleteExpiredOrUsedTokens(@Param("now") LocalDateTime now);
+
+    /**
+     * Elimina tutti i token di reset password di un utente.
+     * Necessario per eliminazione account.
+     */
+    @Modifying
+    @Query("DELETE FROM PasswordResetToken prt WHERE prt.user.id = :userId")
+    void deleteByUserId(@Param("userId") Long userId);
 }

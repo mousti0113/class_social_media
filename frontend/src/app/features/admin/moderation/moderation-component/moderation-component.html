@@ -21,28 +21,6 @@
 
   <!-- Content -->
   <main class="max-w-6xl mx-auto px-4 py-6">
-    <!-- Tabs -->
-    <div class="flex gap-2 mb-6">
-      @for (tab of tabs; track tab.id) {
-        <button
-          type="button"
-          (click)="setTab(tab.id)"
-          class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors"
-          [class.bg-primary-500]="activeTab() === tab.id"
-          [class.text-white]="activeTab() === tab.id"
-          [class.bg-white]="activeTab() !== tab.id"
-          [class.dark:bg-gray-800]="activeTab() !== tab.id"
-          [class.text-gray-700]="activeTab() !== tab.id"
-          [class.dark:text-gray-300]="activeTab() !== tab.id"
-          [class.border]="activeTab() !== tab.id"
-          [class.border-gray-300]="activeTab() !== tab.id"
-          [class.dark:border-gray-600]="activeTab() !== tab.id"
-        >
-          <lucide-icon [img]="tab.icon" [size]="18" />
-          {{ tab.label }}
-        </button>
-      }
-    </div>
 
     <!-- Search bar -->
     <div class="mb-6">
@@ -65,7 +43,7 @@
     <!-- Stats -->
     @if (totalElements() > 0) {
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        {{ totalElements() }} {{ activeTab() === 'posts' ? 'post' : 'commenti' }} trovati
+        {{ totalElements() }} post trovati
       </p>
     }
 
@@ -121,7 +99,7 @@
     }
 
     <!-- Posts list -->
-    @if (hasPosts() && !hasError() && activeTab() === 'posts') {
+    @if (hasPosts() && !hasError()) {
       <div class="space-y-4">
         @for (post of posts(); track post.id) {
           <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow">
@@ -203,15 +181,6 @@
                   <lucide-icon [img]="Trash2Icon" [size]="16" />
                   Elimina post
                 </button>
-
-                <button
-                  type="button"
-                  (click)="deleteAllUserPosts(post)"
-                  class="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                >
-                  <lucide-icon [img]="Trash2Icon" [size]="16" />
-                  Elimina tutti i post utente
-                </button>
               }
             </div>
           </div>
@@ -246,19 +215,6 @@
           </div>
         </div>
       }
-    }
-
-    <!-- Comments tab placeholder -->
-    @if (activeTab() === 'comments') {
-      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-12 text-center">
-        <lucide-icon [img]="MessageSquareIcon" [size]="48" class="text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-          Moderazione commenti
-        </h3>
-        <p class="text-gray-500 dark:text-gray-400">
-          Funzionalità in arrivo. Per ora puoi moderare i commenti dalla pagina del singolo post.
-        </p>
-      </div>
     }
   </main>
 </div>

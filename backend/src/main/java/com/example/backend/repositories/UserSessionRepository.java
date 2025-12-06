@@ -64,4 +64,12 @@ public interface UserSessionRepository extends JpaRepository<UserSession, Long> 
      */
     @Query("SELECT DISTINCT us.user.id FROM UserSession us WHERE us.isOnline = true")
     Set<Long> findAllOnlineUserIds();
+
+    /**
+     * Elimina tutte le sessioni di un utente.
+     * Necessario per eliminazione account.
+     */
+    @Modifying
+    @Query("DELETE FROM UserSession us WHERE us.user.id = :userId")
+    void deleteByUserId(@Param("userId") Long userId);
 }

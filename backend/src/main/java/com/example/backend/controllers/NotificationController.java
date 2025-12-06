@@ -258,4 +258,32 @@ public class NotificationController {
 
         return ResponseEntity.ok(Map.of("deletedCount", count));
     }
+
+    /**
+     * DELETE /api/notifications/all
+     * Elimina TUTTE le notifiche dell'utente (lette e non lette).
+     * <p>
+     * Funzionalità di pulizia totale delle notifiche.
+     * Utile quando l'utente vuole fare piazza pulita.
+     * <p>
+     * Restituisce il numero di notifiche eliminate nella risposta.
+     * <p>
+     * Codici di stato:
+     * - 200 OK: Notifiche eliminate con successo
+     * - 401 UNAUTHORIZED: Utente non autenticato
+     *
+     * @param user Utente autenticato
+     * @return Map con il campo deletedCount (numero di notifiche eliminate)
+     */
+    @DeleteMapping("/all")
+    public ResponseEntity<Map<String, Integer>> eliminaTutteLeNotifiche(
+            @CurrentUser User user) {
+
+        log.debug("DELETE /api/notifications/all - Username: {}",
+                user.getUsername());
+
+        int count = notificationService.eliminaTutteLeNotifiche(user.getId());
+
+        return ResponseEntity.ok(Map.of("deletedCount", count));
+    }
 }
