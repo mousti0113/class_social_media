@@ -1,5 +1,6 @@
 import { Component, inject, signal, output, computed, viewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { LucideAngularModule, Image, X } from 'lucide-angular';
 import { AvatarComponent } from '../../../../../shared/ui/avatar/avatar-component/avatar-component';
 import { ButtonComponent } from '../../../../../shared/ui/button/button-component/button-component';
@@ -25,6 +26,7 @@ export class CreatePostComponent {
 private readonly postService = inject(PostService);
   private readonly authStore = inject(AuthStore);
   private readonly toastService = inject(ToastService);
+  private readonly router = inject(Router);
 
   // Riferimento alla textarea
   readonly textareaRef = viewChild<ElementRef<HTMLTextAreaElement>>('textareaEl');
@@ -314,5 +316,15 @@ private readonly postService = inject(PostService);
     this.showMentionDropdown.set(false);
     this.mentionSearchTerm.set('');
     this.mentionStartIndex.set(-1);
+  }
+
+  /**
+   * Naviga al profilo dell'utente corrente
+   */
+  goToProfile(): void {
+    const userId = this.currentUser()?.id;
+    if (userId) {
+      this.router.navigate(['/profile', userId]);
+    }
   }
 }

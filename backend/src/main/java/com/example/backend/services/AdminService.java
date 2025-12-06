@@ -438,7 +438,7 @@ public class AdminService {
             Map<String, Object> stats = new HashMap<>();
             stats.put("totalUsers", totaleUtenti);
             stats.put("activeUsers", utentiAttivi);
-            stats.put("adminUsers", utentiAdmin);
+            stats.put("totalAdmins", utentiAdmin);
             stats.put("disabledUsers", totaleUtenti - utentiAttivi);
             stats.put("totalPosts", totalePosts);
             stats.put("totalComments", totaleCommenti);

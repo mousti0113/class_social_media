@@ -83,7 +83,7 @@ export class ConversationsComponent implements OnInit, OnDestroy {
 
   readonly hasConversations = computed(() => this.filteredConversations().length > 0);
   readonly hasSearchResults = computed(() => this.searchResults().length > 0);
-  readonly isEmpty = computed(() => !this.isLoading() && this.conversations().length === 0);
+  readonly isEmpty = computed(() => !this.isLoading() && !this.isSearchMode() && this.conversations().length === 0);
   readonly noSearchResults = computed(() => 
     !this.isLoading() && 
     !this.isSearching() &&

@@ -2,13 +2,19 @@
   <!-- Header: Avatar + Textarea -->
   <div class="flex items-start gap-3">
     <!-- Avatar utente corrente -->
-    <app-avatar
-      [src]="currentUser()?.profilePictureUrl ?? null"
-      [name]="currentUser()?.nomeCompleto ?? 'Utente'"
-      size="md"
-      status="online"
+    <button
+      type="button"
+      (click)="goToProfile()"
       class="flex-shrink-0"
-    />
+      [attr.aria-label]="'Vai al tuo profilo'"
+    >
+      <app-avatar
+        [src]="currentUser()?.profilePictureUrl ?? null"
+        [name]="currentUser()?.nomeCompleto ?? 'Utente'"
+        size="md"
+        class="cursor-pointer"
+      />
+    </button>
 
     <!-- Textarea per contenuto con supporto menzioni -->
     <div class="flex-1 relative">
