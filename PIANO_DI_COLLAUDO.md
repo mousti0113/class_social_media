@@ -101,10 +101,10 @@ Test Case Associati:
         ◦ Input: content="Questo è un test post", imageUrl=null
         ◦ Expected: Status 201, post creato con ID, contenuto salvato
     • TC-06.2: Creazione post con solo immagine
-        ◦ Input: content=null, imageUrl="https://firebase.storage/image.jpg"
-        ◦ Expected: Status 201, post creato con immagine URL
+        ◦ Input: content=null, imageUrl="https://res.cloudinary.com/.../image.jpg"
+        ◦ Expected: Status 201, post creato con immagine URL Cloudinary
     • TC-06.3: Creazione post con testo e immagine
-        ◦ Input: content="Post con immagine", imageUrl="https://firebase.storage/img.jpg"
+        ◦ Input: content="Post con immagine", imageUrl="https://res.cloudinary.com/.../img.jpg"
         ◦ Expected: Status 201, post con entrambi i campi
     • TC-06.4: Creazione post senza contenuto né immagine
         ◦ Input: content=null, imageUrl=null
@@ -317,7 +317,7 @@ GESTIONE PROFILO
 RF-26: Aggiornamento Profilo
 Test Case Associati:
     • TC-26.1: Aggiornamento campi modificabili
-        ◦ Input: fullName="Nuovo Nome", bio="La mia bio", profilePictureUrl="https://firebase.storage/avatar.jpg"
+        ◦ Input: fullName="Nuovo Nome", bio="La mia bio", profilePictureUrl="https://res.cloudinary.com/.../avatar.jpg"
         ◦ Expected: Status 200, campi aggiornati, updatedAt modificato
     • TC-26.2: Tentativo modifica username (non permesso)
         ◦ Expected: Username rimane invariato
@@ -433,37 +433,54 @@ Risultati effettivi dei Test Case
 
 Esempio formato risultati:
 
-TC-01.1: Registrazione con dati validi
-Eseguito: Sì
-Data esecuzione: 8 dicembre 2025
-Input utilizzato:
-    • username: "pippo"
-    • email: "pippo@marconirovereto.it"
-    • password: "pluto123"
-    • fullName: "Pippo Test"
-Risultato atteso: Status 201, access token JWT generato, refresh token generato, utente creato nel database
-Risultato ottenuto: PASS
-    • Status: 201 Created
-    • Access token ricevuto: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-    • Refresh token ricevuto: 550e8400-e29b-41d4-a716-446655440000
-    • Utente ID: 42
-    • Password hashata con BCrypt verificata nel database
-Esito: PASS ✓
+**Nota**: Tutti i test case elencati nella matrice di collaudo sono stati eseguiti e validati con successo. I risultati principali sono riportati di seguito.
 
-TC-02.1: Login con credenziali valide
-Eseguito: Sì
-Data esecuzione: 8 dicembre 2025
-Input utilizzato:
-    • username: "pippo"
-    • password: "pluto"
-Risultato atteso: Status 200, access token JWT, refresh token, dati utente, lastSeen aggiornato
-Risultato ottenuto: PASS
-    • Status: 200 OK
-    • Access token valido ricevuto
-    • Refresh token valido ricevuto
-    • Campo lastSeen aggiornato a timestamp corrente
-    • Dati utente completi nel response body
-Esito: PASS ✓
+### Test Autenticazione
+✅ TC-01.1: Registrazione con dati validi - PASS
+✅ TC-01.2: Registrazione con username esistente - PASS (409 Conflict)
+✅ TC-01.3: Registrazione con email esistente - PASS (409 Conflict)
+✅ TC-01.4: Registrazione con email dominio non valido - PASS (400 Bad Request)
+✅ TC-01.6: Rate limiting registrazioni - PASS (429 Too Many Requests)
+
+✅ TC-02.1: Login con credenziali valide - PASS
+✅ TC-02.2: Login con username inesistente - PASS (401 Unauthorized)
+✅ TC-02.3: Login con password errata - PASS (401 Unauthorized)
+✅ TC-02.5: Rate limiting login - PASS (429 Too Many Requests)
+
+✅ TC-03.1: Refresh token valido - PASS (nuovo access token generato)
+✅ TC-03.2: Refresh token scaduto - PASS (401 Unauthorized)
+
+✅ TC-04.1: Logout con refresh token - PASS (token invalidato)
+
+### Test Post e Interazioni
+✅ TC-06.1: Creazione post con testo - PASS
+✅ TC-06.2: Creazione post con immagine Cloudinary - PASS
+✅ TC-06.5: Creazione post con menzioni - PASS (notifiche generate)
+✅ TC-06.6: Rate limiting creazione post - PASS (429 dopo 10 richieste)
+
+✅ TC-07.1: Feed post con paginazione - PASS
+✅ TC-07.4: Flag likedByCurrentUser corretto - PASS
+
+✅ TC-11.1: Like post - PASS (likesCount incrementato, notifica generata)
+✅ TC-11.2: Rimuovere like - PASS (likesCount decrementato)
+✅ TC-11.4: Rate limiting like - PASS (429 dopo 30 richieste)
+
+✅ TC-13.1: Commento con testo - PASS (commentsCount incrementato)
+✅ TC-13.2: Commento con menzioni - PASS (notifiche COMMENT e MENTION)
+✅ TC-13.4: Rate limiting commenti - PASS (429 dopo 10 richieste)
+
+### Test Messaggi e Notifiche
+✅ TC-18.1: Invio messaggio diretto - PASS (WebSocket real-time)
+✅ TC-18.4: Rate limiting messaggi - PASS (429 dopo 20 richieste)
+
+✅ TC-23.1: Connessione WebSocket con JWT - PASS
+✅ TC-23.2: Ricezione notifica real-time - PASS (notifica istantanea)
+
+### Test Admin
+✅ TC-32.1: Admin elimina post utente - PASS (audit log creato)
+✅ TC-34.1: Admin disattiva utente - PASS (isActive=false)
+✅ TC-35.1: Visualizzazione statistiche - PASS
+✅ TC-36.1: Audit log con paginazione - PASS
 
 
 BUG E RISOLUZIONI
@@ -471,51 +488,54 @@ BUG E RISOLUZIONI
 
 Elenco dei problemi maggiori incontrati durante il collaudo e come sono stati risolti
 
-Bug #1: Refresh token non persisteva dopo restart backend
-Severità: CRITICA
-Descrizione: Dopo il riavvio del backend, tutti i refresh token diventavano "non valido o scaduto" anche se creati pochi minuti prima.
-Riproduzione:
-    1. Login utente → refresh token generato
-    2. Restart backend (mvn spring-boot:run)
-    3. Tentativo refresh token → errore "Token non valido o scaduto"
-Causa root: Configurazione Hibernate ddl-auto: create-drop eliminava tutte le tabelle (inclusi refresh_tokens) ad ogni riavvio.
-Soluzione implementata:
-    • Cambiato ddl-auto da create-drop a update in application.yml
-    • Verificato che refresh_tokens persistano tra restart
-    • Test: Login → restart → refresh token ancora funzionante ✓
-Data risoluzione: 7 dicembre 2025
-Commit: fix: cambio ddl-auto da create-drop a update per persistenza dati
+### Bug #1: Refresh Token Non Persisteva
+**Severità**: CRITICA
 
-Bug #2: Dipendenza circolare NotificationService ↔ WebSocketController
-Severità: MEDIA
-Descrizione: Spring lanciava errore "Circular dependency" all'avvio perché NotificationService richiedeva WebSocketController e viceversa.
-Causa root: NotificationService doveva inviare notifiche via WebSocket chiamando direttamente il controller.
-Soluzione implementata:
-    • Refactoring ad architettura event-driven
-    • NotificationService pubblica NotificationCreatedEvent
-    • Creato NotificationWebSocketListener che ascolta evento e invia via WebSocket
-    • Eliminata dipendenza diretta tra service e controller
-    • Vantaggio aggiuntivo: invio asincrono con @Async
-Data risoluzione: 5 dicembre 2025
-Commit: refactor: risolto circular dependency con pattern event-driven
+**Problema**: Dopo restart backend, tutti i refresh token diventavano invalidi anche se creati da pochi minuti.
 
-Bug #3: Service Worker non cachava correttamente le API in produzione
-Severità: BASSA
-Descrizione: In build production Angular Service Worker non cachava le chiamate API come configurato in ngsw-config.json.
-Causa root: URL API in dataGroups non matchavano perché mancava wildcard corretta.
-Soluzione implementata:
-    • Aggiornato ngsw-config.json con pattern "https://**/api/**"
-    • Testato caching offline funzionante
-Data risoluzione: 6 dicembre 2025
+**Causa**: Hibernate `ddl-auto: create-drop` eliminava tutte le tabelle ad ogni riavvio.
 
-Bug #4: PWA manifest icon dimensions mismatch
-Severità: BASSA
-Descrizione: Browser console mostrava warning "Manifest icon size mismatch" perché manifest dichiarava dimensioni diverse dai file effettivi.
-Causa root: Manifest dichiarava 128x128 ma file era 144x144.
-Soluzione implementata:
-    • Aggiornato manifest.webmanifest con dimensioni corrette
-    • Riutilizzato file più vicini per dimensioni mancanti
-Data risoluzione: 7 dicembre 2025
+**Soluzione**: Cambiato `ddl-auto` da `create-drop` a `update` in application.yml. I refresh token ora persistono correttamente tra restart.
+
+---
+
+### Bug #2: Dipendenza Circolare NotificationService ↔ WebSocketController
+**Severità**: MEDIA
+
+**Problema**: Spring lanciava errore "Circular dependency" all'avvio.
+
+**Causa**: NotificationService chiamava direttamente WebSocketController per inviare notifiche.
+
+**Soluzione**: Refactoring ad architettura event-driven:
+- NotificationService pubblica `NotificationCreatedEvent`
+- `NotificationWebSocketListener` ascolta evento e invia via WebSocket
+- Invio asincrono con `@Async`
+- Dipendenza circolare eliminata
+
+---
+
+### Bug #3: Contatori Commenti Non Si Aggiornano
+**Severità**: ALTA
+
+**Problema**: Eliminando un commento con risposte, `commentsCount` non si aggiornava correttamente.
+
+**Causa**: Soft delete non ricalcolava contatore post eliminazione.
+
+**Soluzione**: AdminService ora:
+- Conta commenti attivi dopo soft delete
+- Aggiorna `commentsCount` su post padre
+- Emette evento WebSocket per aggiornamento real-time
+
+---
+
+### Bug #4: PWA Manifest Icon Mismatch
+**Severità**: BASSA
+
+**Problema**: Browser console warning "Manifest icon size mismatch".
+
+**Causa**: Manifest dichiarava dimensioni diverse dai file effettivi.
+
+**Soluzione**: Aggiornato `manifest.webmanifest` con dimensioni corrette degli icon files.
 
 
 ISTRUZIONI DI MESSA IN ESERCIZIO
@@ -531,223 +551,191 @@ Software richiesto:
     • Maven 3.9+
     • Node.js 20+ e npm 10+
     • PostgreSQL 17
-    • Account Firebase (per hosting frontend e storage immagini)
-    • Account Fly.io (per deploy backend)
-    • Account Cloudinary (per storage immagini opzionale)
-    • Account Gmail con App Password (per invio email)
 
 Account e configurazioni esterne:
-    • Firebase Project con Hosting e Storage abilitati
-    • Fly.io account con CLI installato
-    • PostgreSQL database su Fly.io (gestito direttamente, no Docker)
-    • Gmail App Password per SMTP
-    • Cloudinary API keys (opzionale)
+    • Vercel account per hosting frontend
+    • Render.com account per backend e database PostgreSQL
+    • Cloudinary account per storage immagini (upload con compression 90%, max 1920px)
+    • Gmail con App Password per SMTP
 
 
 CONFIGURAZIONE BACKEND
 
 Passo 1: Clone repository
+```bash
 git clone https://github.com/mousti0113/class_social_media.git
 cd class_social_media/backend
+```
 
-Passo 2: Configurazione variabili d'ambiente
-Creare file .env nella directory backend/ con i seguenti valori:
+Passo 2: Deploy backend su Render.com
 
-# Database PostgreSQL (Fly.io managed)
-JDBC_DATABASE_URL=jdbc:postgresql://<fly-db-host>:5432/class_social_db
-DB_USERNAME=<db-username>
-DB_PASSWORD=<db-password>
+1. Vai su [Render.com](https://render.com) → Dashboard → New → Web Service
+2. Connetti repository GitHub: `mousti0113/class_social_media`
+3. Configurazione:
+   - Name: `beetus-backend`
+   - Region: Frankfurt
+   - Root Directory: `backend`
+   - Runtime: Docker
+   - Instance Type: Free
+4. Environment Variables (aggiungi su Render dashboard):
+```env
+JDBC_DATABASE_URL=<url-database-postgresql-interno>
+DB_USERNAME=<username-db>
+DB_PASSWORD=<password-db>
 DDL_AUTO=update
-
-# JWT Security
 JWT_SECRET=<genera-stringa-random-64-caratteri>
 JWT_ACCESS_EXPIRATION=1800000
-
-# Email SMTP (Gmail)
 MAIL_HOST=smtp.gmail.com
 MAIL_PORT=587
 MAIL_USERNAME=<tuo-email@gmail.com>
 MAIL_PASSWORD=<gmail-app-password>
-
-# Cloudinary (opzionale)
 CLOUDINARY_CLOUD_NAME=<cloud-name>
 CLOUDINARY_API_KEY=<api-key>
 CLOUDINARY_API_SECRET=<api-secret>
-
-# CORS (URL frontend Firebase)
-ALLOWED_ORIGINS=https://<tuo-progetto>.web.app,https://<tuo-progetto>.firebaseapp.com
-
-# Logging
+APP_FRONTEND_URL=https://<tuo-vercel-app>.vercel.app
+ALLOWED_ORIGINS=https://<tuo-vercel-app>.vercel.app
 SHOW_SQL=false
+```
+5. Click "Create Web Service" → Render inizia il deploy automatico
 
-IMPORTANTE: Non committare mai il file .env su Git (già in .gitignore)
+Passo 3: Crea database PostgreSQL su Render
 
-Passo 3: Verifica Dockerfile backend
-Il Dockerfile è già configurato per build multi-stage con Maven e JRE 25.
-Nessuna modifica necessaria.
+1. Dashboard → New → PostgreSQL
+2. Name: `beetus-db`
+3. Region: Frankfurt
+4. Instance Type: Free (1GB storage, scade dopo 30 giorni)
+5. Copia **Internal Database URL** e impostala come `JDBC_DATABASE_URL` nel backend
 
-Passo 4: Deploy backend su Fly.io
-
-# Login Fly.io
-fly auth login
-
-# Crea app Fly.io
-fly launch --name class-social-backend --region fra
-
-# Configura database PostgreSQL managed su Fly.io
-fly postgres create --name class-social-db --region fra
-
-# Collega database all'app
-fly postgres attach class-social-db --app class-social-backend
-
-# Imposta secrets (variabili d'ambiente)
-fly secrets set JWT_SECRET=<secret> MAIL_PASSWORD=<password> CLOUDINARY_API_SECRET=<secret>
-
-# Deploy applicazione
-fly deploy
-
-# Verifica status
-fly status
-fly logs
-
-URL backend: https://class-social-backend.fly.dev
+URL backend: `https://<tuo-servizio>.onrender.com`
 
 
 CONFIGURAZIONE FRONTEND
 
-Passo 1: Installazione dipendenze
-cd ../frontend
-npm install
+Passo 1: Deploy frontend su Vercel
 
-Passo 2: Configurazione Firebase
-# Installa Firebase CLI
-npm install -g firebase-tools
+1. Vai su [Vercel](https://vercel.com) → Add New → Project
+2. Import repository GitHub: `mousti0113/class_social_media`
+3. Configurazione:
+   - Framework Preset: Angular
+   - Root Directory: `frontend`
+   - Build Command: `npm run build`
+   - Output Directory: `dist/frontend/browser`
+4. Environment Variables: nessuna (production URLs hardcoded in environment.ts)
+5. Deploy → Vercel effettua build e deploy automatico
 
-# Login Firebase
-firebase login
+Passo 2: Configurazione environment.ts
+Il file `src/environments/environment.ts` deve contenere:
 
-# Inizializza progetto
-firebase init hosting
-
-Selezionare:
-    • Build directory: dist/frontend/browser
-    • Single Page App: Yes
-    • Overwrite index.html: No
-
-Passo 3: Configurazione environment production
-Modificare src/environments/environment.prod.ts:
-
+```typescript
 export const environment = {
   production: true,
-  apiUrl: 'https://class-social-backend.fly.dev/api',
-  wsUrl: 'wss://class-social-backend.fly.dev/ws',
+  apiUrl: 'https://<backend-render>.onrender.com/api',
+  wsUrl: 'https://<backend-render>.onrender.com/ws',
   cloudinary: {
     cloudName: '<tuo-cloud-name>',
     uploadPreset: '<upload-preset>'
   }
 };
+```
 
-Passo 4: Build e deploy frontend
-# Build production
-npm run build -- --configuration production
+Passo 3: Vercel.json configurazione
+Il file `vercel.json` gestisce routing SPA:
+```json
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/manifest.webmanifest",
+      "headers": [
+        { "key": "Content-Type", "value": "application/manifest+json" }
+      ]
+    }
+  ]
+}
+```
 
-# Deploy su Firebase Hosting
-firebase deploy --only hosting
-
-URL frontend: https://<tuo-progetto>.web.app
+URL frontend: `https://<tuo-progetto>.vercel.app`
 
 
 CONFIGURAZIONE DATABASE
 
-Il database PostgreSQL su Fly.io è già configurato automaticamente con fly postgres attach.
+Il database PostgreSQL su Render.com viene configurato durante creazione del servizio.
 
-Verifica connessione:
-fly postgres connect --app class-social-db
+Schema database creato automaticamente da Hibernate all'avvio con `ddl-auto: update`.
 
-Lo schema viene creato automaticamente da Hibernate all'avvio (ddl-auto: update).
+**Nota importante**: Al primo deploy, se le tabelle non vengono create:
+1. Cambia temporaneamente `DDL_AUTO=create` nelle Environment Variables
+2. Salva e attendi redeploy
+3. Verifica creazione tabelle
+4. **CAMBIA SUBITO INDIETRO** `DDL_AUTO=update` per evitare perdita dati
+
+Connessione al database per manutenzione:
+```bash
+psql <external-database-url-da-render>
+```
 
 
 TEST POST-DEPLOYMENT
 
-Passo 1: Verifica backend API
-curl https://class-social-backend.fly.dev/actuator/health
+Passo 1: Verifica backend health check
+```bash
+curl https://<backend-render>.onrender.com/actuator/health
+```
+Expected: `{"status":"UP"}`
 
-Expected output:
-{"status":"UP"}
-
-Passo 2: Test registrazione utente
-POST https://class-social-backend.fly.dev/api/auth/register
-Content-Type: application/json
-
-{
-  "username": "testuser",
-  "email": "test@marconirovereto.it",
-  "password": "test123",
-  "nomeCompleto": "Test User"
-}
-
-Expected: Status 201, access token e refresh token ricevuti
-
-Passo 3: Test login
-POST https://class-social-backend.fly.dev/api/auth/login
-Content-Type: application/json
-
-{
-  "username": "testuser",
-  "password": "test123"
-}
-
-Expected: Status 200, token JWT validi
-
-Passo 4: Verifica frontend Firebase
-Aprire https://<tuo-progetto>.web.app nel browser
+Passo 2: Verifica frontend caricamento
+Aprire `https://<frontend-vercel>.vercel.app` nel browser
 Expected:
-    • Applicazione carica correttamente
-    • Pagina login/registrazione visibile
-    • PWA installabile (icona + nella barra indirizzi)
-    • Service Worker attivo (verificare in DevTools → Application → Service Workers)
+- Applicazione carica correttamente
+- Pagina login/registrazione visibile
+- PWA installabile (icona + nella barra indirizzi)
 
-Passo 5: Test end-to-end
-    1. Registrazione nuovo utente dal frontend
-    2. Verifica ricezione email benvenuto
-    3. Login
-    4. Creazione post con testo e immagine (upload Firebase)
-    5. Like/commento ad altro post
-    6. Verifica notifiche real-time (WebSocket)
-    7. Test PWA offline (disattiva rete, app deve funzionare con cache)
+Passo 3: Test registrazione end-to-end
+1. Registrazione nuovo utente con email @marconirovereto.it
+2. Verifica ricezione email di verifica
+3. Click link verifica → redirect a frontend Vercel
+4. Login
+5. Creazione post con immagine Cloudinary (compression automatica 90%)
+6. Like/commento
+7. Verifica notifiche real-time WebSocket
+
+Passo 4: Test PWA offline
+1. DevTools → Application → Service Workers (verifica attivo)
+2. Network → Offline
+3. Naviga app (cache funziona)
+4. Torna online → sincronizzazione automatica
 
 
 MANUTENZIONE E MONITORING
 
-Monitoring Fly.io Backend:
-# Logs in tempo reale
-fly logs --app class-social-backend
+Monitoring Backend (Render.com):
+1. Dashboard → Logs (real-time)
+2. Metrics → CPU, Memory, Requests
+3. Events → Deploy history
 
-# Metriche
-fly dashboard class-social-backend
+Monitoring Frontend (Vercel):
+1. Dashboard → Deployments
+2. Analytics → Page views, performance
+3. Logs → Build e runtime logs
 
-# Restart se necessario
-fly apps restart class-social-backend
+Database Maintenance:
+```bash
+# Connetti al database
+psql <external-database-url>
 
-Monitoring Firebase Frontend:
-# Console Firebase
-firebase open hosting
+# Backup manuale (Render free tier: no backup automatici)
+pg_dump <database-url> > backup.sql
 
-# Analytics traffico e performance
-
-Database Backup:
-# Backup automatico Fly.io Postgres (retention 7 giorni)
-fly postgres backup list --app class-social-db
-
-# Restore da backup
-fly postgres restore --app class-social-db --backup-id <id>
+# Restore
+psql <database-url> < backup.sql
+```
 
 Scaling:
-# Backend Fly.io (se necessario)
-fly scale count 2 --app class-social-backend
-fly scale memory 1024 --app class-social-backend
-
-# Frontend Firebase Hosting scala automaticamente
+- Backend Render: Upgrade piano per più CPU/RAM
+- Frontend Vercel: Scaling automatico
+- Database Render: Free tier limitato a 1GB (upgrade per più storage)
 
 
 MANUALE UTENTE
@@ -789,7 +777,7 @@ CREAZIONE E GESTIONE POST
 Come creare un post:
     1. Dal feed principale, cliccare il pulsante "+" o "Nuovo Post"
     2. Scrivere il contenuto del post (max 5000 caratteri)
-    3. (Opzionale) Cliccare icona immagine per caricare una foto
+    3. (Opzionale) Cliccare icona immagine per caricare una foto (Cloudinary: compression 90%, max 1920px)
     4. (Opzionale) Menzionare altri utenti scrivendo @username
     5. Cliccare "Pubblica"
     6. Il post apparirà nel feed

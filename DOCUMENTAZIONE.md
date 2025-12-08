@@ -22,7 +22,7 @@ Backend (Java/Spring Boot)
     • Spring Dotenv: 4.0.0 - gestione variabili d'ambiente da file .env
     • Bucket4j: 8.10.1 - rate limiting per proteggere API da abusi
     • Caffeine Cache: cache in-memory per rate limiting
-    • Cloudinary HTTP5: 2.3.2 - upload e gestione immagini nel cloud
+    • Cloudinary HTTP5: 2.3.2 - upload e gestione immagini nel cloud con compression automatica
     
     • Docker: containerizzazione con multi-stage builds
 
@@ -70,9 +70,10 @@ npm install
 npm start
 
 Deployment:
-• Backend: Fly.io con Docker (Dockerfile in backend/)
-• Frontend: Firebase Hosting (ng build --configuration production)
-• Database: PostgreSQL su Fly.io (gestito direttamente, no Docker)
+• Backend: Render.com con Docker (Dockerfile in backend/)
+• Frontend: Vercel (ng build --configuration production)
+• Database: PostgreSQL su Render.com (free tier, 1GB)
+• Storage Immagini: Cloudinary (90% compression, max 1920px)
 
 
 STRUTTURA DEL CODICE

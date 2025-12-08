@@ -1,6 +1,7 @@
 package com.example.backend.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -33,6 +34,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
     private final WebSocketRateLimitInterceptor webSocketRateLimitInterceptor;
+    
+    @Value("${app.cors.allowed-origins}")
+    private String allowedOrigins;
 
     /**
      * Configura il message broker.
@@ -72,8 +76,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(@NonNull StompEndpointRegistry registry) {
         // Registra l'endpoint /ws per connessioni WebSocket
         registry.addEndpoint("/ws")
-                // Permetti connessioni dal frontend Angular
-                .setAllowedOrigins("http://localhost:4200")
+                // Permetti connessioni dal frontend (da variabile d'ambiente)
+                .setAllowedOrigins(allowedOrigins.split(","))
                 // Abilita SockJS come fallback per browser senza supporto WebSocket nativo
                 .withSockJS();
     }
