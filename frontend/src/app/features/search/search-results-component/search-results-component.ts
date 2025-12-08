@@ -7,6 +7,7 @@ import { Subject, takeUntil, finalize, debounceTime, distinctUntilChanged } from
 
 import { UserService } from '../../../core/api/user-service';
 import { PostService } from '../../../core/api/post-service';
+import { WebsocketService } from '../../../core/services/websocket-service';
 import { UserSummaryDTO, PostResponseDTO, PageResponse } from '../../../models';
 import { AvatarComponent } from '../../../shared/ui/avatar/avatar-component/avatar-component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton-component/skeleton-component';
@@ -35,6 +36,7 @@ export class SearchResultsComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly userService = inject(UserService);
   private readonly postService = inject(PostService);
+  private readonly websocketService = inject(WebsocketService);
   private readonly onlineUsersStore = inject(OnlineUsersStore);
   private readonly destroy$ = new Subject<void>();
   private readonly searchSubject = new Subject<string>();
@@ -100,6 +102,9 @@ export class SearchResultsComponent implements OnInit, OnDestroy {
           this.clearResults();
         }
       });
+
+    // Subscribe to WebSocket updates for posts
+    this.subscribeToPostUpdates();
   }
 
   ngOnDestroy(): void {
@@ -283,6 +288,67 @@ export class SearchResultsComponent implements OnInit, OnDestroy {
     this.posts.update(posts =>
       posts.map(p => p.id === updatedPost.id ? updatedPost : p)
     );
+  }
+
+  /**
+   * Gestione post nascosto
+   */
+  onPostHidden(postId: number): void {
+    this.posts.update(posts => posts.filter(p => p.id !== postId));
+  }
+
+  /**
+   * Sottoscrizione agli aggiornamenti dei post via WebSocket
+   */
+  private subscribeToPostUpdates(): void {
+    // Aggiornamenti like in tempo reale
+    this.websocketService.postLiked$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((likeUpdate) => {
+        this.posts.update(posts =>
+          posts.map(p => {
+            if (p.id === likeUpdate.postId) {
+              return { ...p, likesCount: likeUpdate.likesCount };
+            }
+            return p;
+          })
+        );
+      });
+
+    // Aggiornamenti conteggio commenti in tempo reale
+    this.websocketService.commentsCount$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((countUpdate) => {
+        this.posts.update(posts =>
+          posts.map(p => {
+            if (p.id === countUpdate.postId) {
+              return { ...p, commentsCount: countUpdate.commentsCount };
+            }
+            return p;
+          })
+        );
+      });
+
+    // Post eliminato
+    this.websocketService.postDeleted$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((deletedPostId) => {
+        this.posts.update(posts => posts.filter(p => p.id !== deletedPostId));
+      });
+
+    // Post modificato
+    this.websocketService.postUpdated$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((updatedPost) => {
+        this.posts.update(posts =>
+          posts.map(p => {
+            if (p.id === updatedPost.id) {
+              return { ...p, contenuto: updatedPost.contenuto, imageUrl: updatedPost.imageUrl, updatedAt: updatedPost.updatedAt };
+            }
+            return p;
+          })
+        );
+      });
   }
 }
 

@@ -99,6 +99,19 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> searchUsers(@Param("searchTerm") String searchTerm, Pageable pageable);
 
     /**
+     * Ricerca utenti per username o nome completo (versione per admin).
+     * Cerca in tutti gli utenti, inclusi quelli disabilitati.
+     * Case-insensitive.
+     */
+    @Query("""
+        SELECT u FROM User u
+        WHERE LOWER(u.username) LIKE LOWER(CONCAT('%', :query, '%'))
+        OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
+        ORDER BY u.username ASC
+        """)
+    Page<User> searchByUsernameOrFullName(@Param("query") String query, Pageable pageable);
+
+    /**
      * Trova tutti gli utenti attivi con paginazione.
      * Ordinati alfabeticamente per username.
      * Utile per mostrare la lista completa degli studenti della classe.

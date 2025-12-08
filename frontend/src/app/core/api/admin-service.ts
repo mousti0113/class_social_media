@@ -15,6 +15,32 @@ export class AdminService {
   // ============================================================================
 
   /**
+   * Ottiene la lista completa degli utenti con informazioni admin
+   *
+   * Endpoint: GET /api/admin/users
+   * Autenticazione: richiesta (ADMIN)
+   *
+   * Restituisce utenti con campi: id, username, nomeCompleto, email, profilePictureUrl, isAdmin, isActive
+   *
+   * @param page numero pagina (default 0)
+   * @param size elementi per pagina (default 20)
+   * @param query query di ricerca opzionale per username o nome
+   */
+  getAllUsers(
+    page: number = 0,
+    size: number = 20,
+    query?: string
+  ): Observable<PageResponse<AdminUserDTO>> {
+    let params = new HttpParams().set('page', page.toString()).set('size', size.toString());
+
+    if (query && query.trim()) {
+      params = params.set('query', query.trim());
+    }
+
+    return this.http.get<PageResponse<AdminUserDTO>>(`${this.baseUrl}/users`, { params });
+  }
+
+  /**
    * Elimina completamente un utente dal sistema
    *
    * Endpoint: DELETE /api/admin/users/{userId}
@@ -392,3 +418,16 @@ export type RateLimitType =
   | 'MESSAGE'
   | 'API_GENERAL'
   | 'WEBSOCKET';
+
+/**
+ * DTO utente per pagina admin con informazioni estese
+ */
+export interface AdminUserDTO {
+  id: number;
+  username: string;
+  nomeCompleto: string;
+  email: string;
+  profilePictureUrl: string | null;
+  isAdmin: boolean;
+  isActive: boolean;
+}

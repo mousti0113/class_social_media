@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -12,28 +12,20 @@ import {
   UserX,
   UserCheck,
   Trash2,
-  MoreVertical,
+  EllipsisVertical,
   ChevronLeft,
   ChevronRight,
-  AlertCircle,
-  Loader2,
+  CircleAlert,
+  LoaderCircle,
 } from 'lucide-angular';
 import { Subject, takeUntil, finalize, debounceTime, distinctUntilChanged } from 'rxjs';
 
-import { AdminService } from '../../../../core/api/admin-service';
-import { UserService } from '../../../../core/api/user-service';
+import { AdminService, AdminUserDTO } from '../../../../core/api/admin-service';
 import { ToastService } from '../../../../core/services/toast-service';
 import { DialogService } from '../../../../core/services/dialog-service';
 import { ButtonComponent } from '../../../../shared/ui/button/button-component/button-component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar-component/avatar-component';
-import { UserSummaryDTO, PageResponse } from '../../../../models';
-
-// Interfaccia estesa per utenti admin
-interface AdminUserDTO extends UserSummaryDTO {
-  email?: string;
-  isAdmin?: boolean;
-  isActive?: boolean;
-}
+import { AuthService } from '../../../../core/auth/services/auth-service';
 
 @Component({
   selector: 'app-users-component',
@@ -51,11 +43,12 @@ interface AdminUserDTO extends UserSummaryDTO {
 export class UsersComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly adminService = inject(AdminService);
-  private readonly userService = inject(UserService);
   private readonly toastService = inject(ToastService);
   private readonly dialogService = inject(DialogService);
+  private readonly authService = inject(AuthService);
   private readonly destroy$ = new Subject<void>();
   private readonly searchSubject$ = new Subject<string>();
+  private readonly currentUsername = this.authService.getCurrentUser()?.username;
 
   // Icone
   readonly ArrowLeftIcon = ArrowLeft;
@@ -66,11 +59,11 @@ export class UsersComponent implements OnInit, OnDestroy {
   readonly UserXIcon = UserX;
   readonly UserCheckIcon = UserCheck;
   readonly Trash2Icon = Trash2;
-  readonly MoreVerticalIcon = MoreVertical;
+  readonly MoreVerticalIcon = EllipsisVertical;
   readonly ChevronLeftIcon = ChevronLeft;
   readonly ChevronRightIcon = ChevronRight;
-  readonly AlertCircleIcon = AlertCircle;
-  readonly LoaderIcon = Loader2;
+  readonly AlertCircleIcon = CircleAlert;
+  readonly LoaderIcon = LoaderCircle;
 
   // State
   readonly isLoading = signal(true);
@@ -102,6 +95,14 @@ export class UsersComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Chiude il dropdown quando si clicca fuori
+   */
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    this.closeDropdown();
+  }
+
+  /**
    * Configura debounce sulla ricerca
    */
   private setupSearch(): void {
@@ -122,22 +123,26 @@ export class UsersComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Carica lista utenti
+   * Carica lista utenti (escluso l'admin corrente)
    */
   loadUsers(): void {
     this.isLoading.set(true);
     this.hasError.set(false);
 
-    this.userService.getAllUsers(this.currentPage(), this.pageSize)
+    this.adminService.getAllUsers(this.currentPage(), this.pageSize)
       .pipe(
         takeUntil(this.destroy$),
         finalize(() => this.isLoading.set(false))
       )
       .subscribe({
         next: (response) => {
-          this.users.set(response.content as AdminUserDTO[]);
+          // Filtra l'admin corrente dalla lista
+          const filteredUsers = response.content.filter(
+            user => user.username !== this.currentUsername
+          );
+          this.users.set(filteredUsers);
           this.totalPages.set(response.totalPages);
-          this.totalElements.set(response.totalElements);
+          this.totalElements.set(response.totalElements - (response.content.length - filteredUsers.length));
         },
         error: () => {
           this.hasError.set(true);
@@ -147,22 +152,26 @@ export class UsersComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Cerca utenti
+   * Cerca utenti (escluso l'admin corrente)
    */
   searchUsers(query: string): void {
     this.isLoading.set(true);
     this.hasError.set(false);
 
-    this.userService.searchUsers(query, this.currentPage(), this.pageSize)
+    this.adminService.getAllUsers(this.currentPage(), this.pageSize, query)
       .pipe(
         takeUntil(this.destroy$),
         finalize(() => this.isLoading.set(false))
       )
       .subscribe({
         next: (response) => {
-          this.users.set(response.content as AdminUserDTO[]);
+          // Filtra l'admin corrente dalla lista
+          const filteredUsers = response.content.filter(
+            user => user.username !== this.currentUsername
+          );
+          this.users.set(filteredUsers);
           this.totalPages.set(response.totalPages);
-          this.totalElements.set(response.totalElements);
+          this.totalElements.set(response.totalElements - (response.content.length - filteredUsers.length));
         },
         error: () => {
           this.hasError.set(true);
@@ -202,8 +211,6 @@ export class UsersComponent implements OnInit, OnDestroy {
    * Promuove utente ad admin
    */
   async promoteUser(user: AdminUserDTO): Promise<void> {
-    this.closeDropdown();
-
     const confirmed = await this.dialogService.confirm({
       title: 'Promuovi ad amministratore',
       message: `Sei sicuro di voler promuovere "${user.username}" ad amministratore? L'utente avrà accesso completo al pannello di amministrazione.`,
@@ -211,8 +218,12 @@ export class UsersComponent implements OnInit, OnDestroy {
       cancelText: 'Annulla',
     });
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      this.closeDropdown();
+      return;
+    }
 
+    this.closeDropdown();
     this.processingUser.set(user.id);
 
     this.adminService.promoteToAdmin(user.id)
@@ -238,8 +249,6 @@ export class UsersComponent implements OnInit, OnDestroy {
    * Rimuove privilegi admin
    */
   async demoteUser(user: AdminUserDTO): Promise<void> {
-    this.closeDropdown();
-
     const confirmed = await this.dialogService.confirm({
       title: 'Rimuovi privilegi admin',
       message: `Sei sicuro di voler rimuovere i privilegi di amministratore da "${user.username}"?`,
@@ -247,8 +256,12 @@ export class UsersComponent implements OnInit, OnDestroy {
       cancelText: 'Annulla',
     });
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      this.closeDropdown();
+      return;
+    }
 
+    this.closeDropdown();
     this.processingUser.set(user.id);
 
     this.adminService.demoteFromAdmin(user.id)
@@ -273,8 +286,6 @@ export class UsersComponent implements OnInit, OnDestroy {
    * Disattiva account utente
    */
   async disableUser(user: AdminUserDTO): Promise<void> {
-    this.closeDropdown();
-
     const confirmed = await this.dialogService.confirmDangerous({
       title: 'Disattiva account',
       message: `Sei sicuro di voler disattivare l'account di "${user.username}"? L'utente non potrà più accedere alla piattaforma.`,
@@ -282,8 +293,12 @@ export class UsersComponent implements OnInit, OnDestroy {
       cancelText: 'Annulla',
     });
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      this.closeDropdown();
+      return;
+    }
 
+    this.closeDropdown();
     this.processingUser.set(user.id);
 
     this.adminService.disableUser(user.id)
@@ -309,7 +324,6 @@ export class UsersComponent implements OnInit, OnDestroy {
    */
   async enableUser(user: AdminUserDTO): Promise<void> {
     this.closeDropdown();
-
     this.processingUser.set(user.id);
 
     this.adminService.enableUser(user.id)
@@ -334,10 +348,9 @@ export class UsersComponent implements OnInit, OnDestroy {
    * Elimina definitivamente utente
    */
   async deleteUser(user: AdminUserDTO): Promise<void> {
-    this.closeDropdown();
-
     // Controllo preventivo: se l'utente è admin, mostra errore
     if (user.isAdmin) {
+      this.closeDropdown();
       this.toastService.error('Non è possibile eliminare un account amministratore. Rimuovi prima i privilegi admin.');
       return;
     }
@@ -349,8 +362,12 @@ export class UsersComponent implements OnInit, OnDestroy {
       cancelText: 'Annulla',
     });
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      this.closeDropdown();
+      return;
+    }
 
+    this.closeDropdown();
     this.processingUser.set(user.id);
 
     this.adminService.deleteUser(user.id)

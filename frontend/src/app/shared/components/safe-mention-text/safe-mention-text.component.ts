@@ -45,11 +45,11 @@ export class SafeMentionTextComponent {
   content = input<string | null | undefined>('');
 
   // ViewChild per accesso al container
-  private container = viewChild.required<ElementRef<HTMLSpanElement>>('container');
+  private readonly container = viewChild.required<ElementRef<HTMLSpanElement>>('container');
 
   // Services
-  private renderer = inject(Renderer2);
-  private router = inject(Router);
+  private readonly renderer = inject(Renderer2);
+  private readonly router = inject(Router);
 
   constructor() {
     // Effect che si attiva quando content cambia

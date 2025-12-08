@@ -54,8 +54,9 @@ public class AdminAuditService {
 
     /**
      * Versione semplificata senza target user
-     * Delega al metodo principale che gestisce la transazione
+     * Duplica la logica per evitare chiamata interna che bypassa il proxy transactional
      */
+    @Transactional
     public void logAzioneAdmin(
             User admin,
             AzioneAdmin azione,
@@ -64,7 +65,22 @@ public class AdminAuditService {
             Long targetId,
             HttpServletRequest request) {
 
-        logAzioneAdmin(admin, azione, descrizione, targetType, targetId, null, request);
+        String ipAddress = getClientIpAddress(request);
+
+        AdminAuditLog logAdmin = AdminAuditLog.builder()
+                .admin(admin)
+                .azione(azione)
+                .descrizione(descrizione)
+                .targetType(targetType)
+                .targetId(targetId)
+                .targetUser(null) // Nessun target user in questa versione
+                .ipAddress(ipAddress)
+                .build();
+
+        auditLogRepository.save(logAdmin);
+
+        log.info("Azione admin registrata: {} da {} (ID: {}) - {}",
+                azione, admin.getUsername(), admin.getId(), descrizione);
     }
 
     /**

@@ -70,4 +70,22 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
      * Trova tutti i commenti di un utente (per eliminazione account).
      */
     List<Comment> findByUserId(Long userId);
+
+    /**
+     * Trova tutti i commenti di un post (per eliminazione post).
+     */
+    List<Comment> findByPostId(Long postId);
+
+    /**
+     * Conta i commenti totali non eliminati nel sistema.
+     * Utile per statistiche admin.
+     */
+    long countByIsDeletedByAuthorFalse();
+
+    /**
+     * Trova tutti i commenti figli di un commento parent.
+     * Include anche quelli soft-deleted per poterli eliminare ricorsivamente.
+     */
+    @Query("SELECT c FROM Comment c WHERE c.parentComment.id = :parentId")
+    List<Comment> findAllChildCommentsByParentId(@Param("parentId") Long parentId);
 }

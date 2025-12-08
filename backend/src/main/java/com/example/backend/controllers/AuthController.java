@@ -26,6 +26,8 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 public class AuthController {
 
+    private static final String MESSAGE_KEY = "message";
+    
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
     private final EmailVerificationService emailVerificationService;
@@ -130,7 +132,7 @@ public class AuthController {
 
         // Messaggio generico per sicurezza (non rivela se l'email esiste)
         return ResponseEntity.ok(java.util.Map.of(
-                "message", "Se l'email fornita è registrata, riceverai un link per resettare la password."));
+                MESSAGE_KEY, "Se l'email fornita è registrata, riceverai un link per resettare la password."));
     }
 
     /**
@@ -157,7 +159,7 @@ public class AuthController {
         passwordResetService.confirmPasswordReset(request.getToken(), request.getNewPassword());
 
         return ResponseEntity.ok(java.util.Map.of(
-                "message", "Password resettata con successo. Ora puoi effettuare il login."));
+                MESSAGE_KEY, "Password resettata con successo. Ora puoi effettuare il login."));
     }
 
     /**
@@ -207,7 +209,7 @@ public class AuthController {
         emailVerificationService.verifyEmail(token);
 
         return ResponseEntity.ok(java.util.Map.of(
-                "message", "Email verificata con successo! Ora puoi effettuare il login."));
+                MESSAGE_KEY, "Email verificata con successo! Ora puoi effettuare il login."));
     }
 
     /**
@@ -237,6 +239,6 @@ public class AuthController {
         emailVerificationService.resendVerificationEmail(email);
 
         return ResponseEntity.ok(java.util.Map.of(
-                "message", "Se l'email è registrata, riceverai un nuovo link di verifica."));
+                MESSAGE_KEY, "Se l'email è registrata, riceverai un nuovo link di verifica."));
     }
 }

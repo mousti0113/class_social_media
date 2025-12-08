@@ -75,4 +75,14 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
      */
     @Query("SELECT DISTINCT l.post.id FROM Like l WHERE l.user.id = :userId")
     List<Long> findPostIdsByUserId(@Param("userId") Long userId);
+
+    /**
+     * Elimina tutti i like di un post.
+     * Viene usato quando un post viene eliminato.
+     *
+     * @return Il numero di like eliminati
+     */
+    @Modifying
+    @Query("DELETE FROM Like l WHERE l.post.id = :postId")
+    int deleteAllByPostId(@Param("postId") Long postId);
 }

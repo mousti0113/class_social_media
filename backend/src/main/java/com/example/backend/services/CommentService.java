@@ -261,18 +261,16 @@ public class CommentService {
     }
 
     /**
-     * Elimina un commento.
+     * Elimina un commento (soft delete) e tutte le sue risposte in modo ricorsivo.
      *
-     * Come per i post, uso il soft delete: il commento non viene eliminato fisicamente
-     * ma viene marcato come cancellato con isDeletedByAuthor = true.
+     * Quando un commento viene eliminato, vengono eliminate anche tutte le sue risposte (childComments).
+     * Questo evita di avere risposte "orfane" nel sistema e mantiene consistenza nei contatori.
      *
      * Comportamento:
-     * - Se il commento ha risposte, queste rimangono visibili
-     * - Il commento viene mostrato come "[Commento eliminato]" nell'interfaccia
-     * - Il contatore commentsCount del post viene decrementato
-     *
-     *Faccio questo perché permette di mantenere la struttura della conversazione. Se elimino fisicamente
-     * un commento con risposte, le risposte perderebbero contesto.
+     * - Il commento e tutte le sue risposte vengono marcati come cancellati (isDeletedByAuthor = true)
+     * - Il contatore commentsCount del post viene decrementato per ogni commento eliminato
+     * - Eventi WebSocket vengono pubblicati per ogni commento eliminato
+     * - Menzioni vengono eliminate per ogni commento
      *
      * @param commentId L'ID del commento da eliminare
      * @param userId L'ID dell'utente che richiede l'eliminazione
@@ -288,32 +286,58 @@ public class CommentService {
                 .orElseThrow(() -> new ResourceNotFoundException(ENTITY_COMMENT, FIELD_ID, commentId));
 
         // Verifica che l'utente sia l'autore
-      
         if (!comment.getUser().getId().equals(userId)) {
             log.warn("Tentativo di eliminazione commento non autorizzato - Commento ID: {}, Utente ID: {}",
                     commentId, userId);
             throw new UnauthorizedException("Non hai i permessi per eliminare questo commento");
         }
 
-        // Soft delete
+        // Elimina ricorsivamente il commento e tutte le sue risposte
+        int deletedCount = deleteCommentAndChildren(comment);
+
+        log.info("Commento {} e {} risposte eliminati con successo (soft delete)", commentId, deletedCount - 1);
+    }
+
+    /**
+     * Elimina ricorsivamente un commento e tutti i suoi figli (soft delete).
+     * Decrementa il contatore del post e pubblica eventi per ogni commento eliminato.
+     *
+     * @param comment Il commento da eliminare
+     * @return Il numero totale di commenti eliminati (incluso il parent)
+     */
+    private int deleteCommentAndChildren(Comment comment) {
+        if (comment.getIsDeletedByAuthor()) {
+            // Già eliminato, skippa
+            return 0;
+        }
+
+        Long postId = comment.getPost().getId();
+        Long commentId = comment.getId();
+        int deletedCount = 0;
+
+        // 1. Trova e elimina ricorsivamente tutti i figli
+        List<Comment> children = commentRepository.findAllChildCommentsByParentId(commentId);
+        for (Comment child : children) {
+            deletedCount += deleteCommentAndChildren(child);
+        }
+
+        // 2. Elimina il commento corrente (soft delete)
         comment.setIsDeletedByAuthor(true);
         commentRepository.save(comment);
+        deletedCount++;
 
-        // Decrementa il contatore dei commenti nel post
-        postRepository.updateCommentsCount(comment.getPost().getId(), -1);
+        // 3. Decrementa il contatore del post
+        postRepository.updateCommentsCount(postId, -1);
 
-        // Pubblica evento per eliminazione menzioni asincrona
+        // 4. Pubblica evento per eliminazione menzioni asincrona
         eventPublisher.publishEvent(new DeleteMentionsEvent(MentionableType.COMMENT, commentId));
         log.debug("Evento DeleteMentionsEvent pubblicato per commento ID: {}", commentId);
 
-        // Pubblica evento per broadcast WebSocket
-        eventPublisher.publishEvent(new CommentDeletedEvent(
-                comment.getPost().getId(),
-                commentId
-        ));
+        // 5. Pubblica evento per broadcast WebSocket
+        eventPublisher.publishEvent(new CommentDeletedEvent(postId, commentId));
         log.debug("Evento CommentDeletedEvent pubblicato per commento ID: {}", commentId);
 
-        log.info("Commento eliminato con successo (soft delete) - ID: {}", commentId);
+        return deletedCount;
     }
 
     /**
@@ -504,5 +528,31 @@ public class CommentService {
         }
 
         return (int) countReale;
+    }
+
+    /**
+     * Elimina tutti i commenti di un post (soft delete).
+     * Viene chiamato quando un post viene eliminato.
+     *
+     * @param postId L'ID del post
+     */
+    @Transactional
+    public void deleteAllCommentsByPostId(Long postId) {
+        log.info("Eliminazione di tutti i commenti per post ID: {}", postId);
+        
+        List<Comment> comments = commentRepository.findByPostId(postId);
+        
+        for (Comment comment : comments) {
+            if (!comment.getIsDeletedByAuthor()) {
+                comment.setIsDeletedByAuthor(true);
+                commentRepository.save(comment);
+                
+                // Pubblica evento per eliminare le menzioni del commento
+                eventPublisher.publishEvent(new DeleteMentionsEvent(MentionableType.COMMENT, comment.getId()));
+                log.debug("Evento DeleteMentionsEvent pubblicato per commento ID: {}", comment.getId());
+            }
+        }
+        
+        log.info("Eliminati {} commenti per post ID: {}", comments.size(), postId);
     }
 }

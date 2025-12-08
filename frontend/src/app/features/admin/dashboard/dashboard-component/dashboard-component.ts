@@ -12,12 +12,12 @@ import {
   Shield,
   TrendingUp,
   RefreshCw,
-  AlertCircle,
+  CircleAlert,
   Database,
   Gauge,
   ScrollText,
 } from 'lucide-angular';
-import { Subject, takeUntil, finalize, forkJoin } from 'rxjs';
+import { Subject, takeUntil, finalize } from 'rxjs';
 
 import { AdminService, SystemStatsResponse } from '../../../../core/api/admin-service';
 import { ToastService } from '../../../../core/services/toast-service';
@@ -59,7 +59,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly ShieldIcon = Shield;
   readonly TrendingUpIcon = TrendingUp;
   readonly RefreshIcon = RefreshCw;
-  readonly AlertCircleIcon = AlertCircle;
+  readonly AlertCircleIcon = CircleAlert;
 
   // State
   readonly isLoading = signal(true);

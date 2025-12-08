@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { LucideAngularModule, Settings, ImageIcon, ArrowLeft } from 'lucide-angular';
+import { LucideAngularModule, Settings, ImageIcon, ArrowLeft, X } from 'lucide-angular';
 import { Subject, takeUntil, forkJoin, finalize } from 'rxjs';
 
 import { UserService } from '../../../core/api/user-service';
@@ -16,8 +16,9 @@ import {
 } from '../../../models';
 import { AvatarComponent } from '../../../shared/ui/avatar/avatar-component/avatar-component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton-component/skeleton-component';
-import { ButtonComponent } from '../../../shared/ui/button/button-component/button-component';
 import { PostCardComponent } from '../../../shared/components/post-card/post-card-component/post-card-component';
+import { InfiniteScroll } from '../../../shared/directives/infinite-scroll';
+import { SpinnerComponent } from '../../../shared/ui/spinner/spinner-component/spinner-component';
 
 type ProfileTab = 'posts' | 'media';
 
@@ -28,8 +29,9 @@ type ProfileTab = 'posts' | 'media';
     LucideAngularModule,
     AvatarComponent,
     SkeletonComponent,
-    ButtonComponent,
     PostCardComponent,
+    InfiniteScroll,
+    SpinnerComponent,
   ],
   templateUrl: './profile-view-component.html',
   styleUrl: './profile-view-component.scss',
@@ -47,6 +49,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   readonly SettingsIcon = Settings;
   readonly ImageIcon = ImageIcon;
   readonly ArrowLeftIcon = ArrowLeft;
+  readonly XIcon = X;
 
   // State
   readonly user = signal<UserResponseDTO | null>(null);
@@ -57,6 +60,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
   readonly isLoadingPosts = signal(false);
   readonly isLoadingMore = signal(false);
   readonly error = signal<string | null>(null);
+
+  // Image preview state per tab Media
+  readonly selectedImageUrl = signal<string | null>(null);
 
   // Pagination
   readonly postsPage = signal(0);
@@ -228,5 +234,19 @@ export class ProfileComponent implements OnInit, OnDestroy {
       return (count / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
     }
     return count.toString();
+  }
+
+  /**
+   * Apre l'anteprima dell'immagine (tab Media)
+   */
+  openImagePreview(imageUrl: string): void {
+    this.selectedImageUrl.set(imageUrl);
+  }
+
+  /**
+   * Chiude l'anteprima dell'immagine
+   */
+  closeImagePreview(): void {
+    this.selectedImageUrl.set(null);
   }
 }

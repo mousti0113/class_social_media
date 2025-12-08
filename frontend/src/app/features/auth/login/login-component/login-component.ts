@@ -6,7 +6,7 @@ import { InputComponent } from '../../../../shared/ui/input/input-component/inpu
 import { ButtonComponent } from '../../../../shared/ui/button/button-component/button-component';
 import { AuthService } from '../../../../core/auth/services/auth-service';
 import { ToastService } from '../../../../core/services/toast-service';
-import { passwordValidator, schoolEmailValidator, usernameValidator } from '../../../../core/utils/validators';
+import { schoolEmailValidator, usernameValidator } from '../../../../core/utils/validators';
 
 @Component({
   selector: 'app-login-component',
@@ -39,7 +39,7 @@ private readonly fb = inject(FormBuilder);
   // Form di login
   readonly loginForm: FormGroup = this.fb.group({
     username: ['', [Validators.required, usernameValidator()]],
-    password: ['', [Validators.required, passwordValidator()]],
+    password: ['', [Validators.required, Validators.minLength(1)]], // Solo verifica che non sia vuota
   });
 
   ngOnInit(): void {
@@ -74,13 +74,9 @@ private readonly fb = inject(FormBuilder);
       return `${this.getFieldLabel(fieldName)} è obbligatorio`;
     }
 
-    // Errore custom dal validatore
+    // Errore custom dal validatore username
     if (control.errors['username']) {
       return control.errors['username'].message;
-    }
-
-    if (control.errors['password']) {
-      return control.errors['password'].message;
     }
 
     return '';

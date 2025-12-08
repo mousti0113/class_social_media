@@ -155,7 +155,15 @@
   --transition-fast: 100ms;
   --transition-normal: 200ms;
   --transition-slow: 300ms;
+
+  /* ==========================================
+     BREAKPOINTS
+     ========================================== */
+  --breakpoint-xs: 375px;
 }
+
+/* Custom media query per xs */
+@custom-media --xs (width >= 375px);
 
 /* ============================================
    GLOBAL STYLES

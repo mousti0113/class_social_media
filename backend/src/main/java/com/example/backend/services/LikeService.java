@@ -275,4 +275,19 @@ public class LikeService {
 
         return (int) countReale;
     }
+
+    /**
+     * Elimina tutti i like di un post.
+     * Viene chiamato quando un post viene eliminato.
+     *
+     * @param postId L'ID del post
+     */
+    @Transactional
+    public void deleteAllLikesByPostId(Long postId) {
+        log.info("Eliminazione di tutti i like per post ID: {}", postId);
+        
+        int deletedCount = likeRepository.deleteAllByPostId(postId);
+        
+        log.info("Eliminati {} like per post ID: {}", deletedCount, postId);
+    }
 }

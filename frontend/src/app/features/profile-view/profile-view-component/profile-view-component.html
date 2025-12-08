@@ -1,7 +1,7 @@
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
   <!-- Loading state -->
   @if (isLoading()) {
-    <div class="max-w-2xl mx-auto">
+    <div class="max-w-5xl mx-auto px-4">
       <!-- Header skeleton -->
       <div class="p-6 pb-4">
         <div class="flex items-start justify-between mb-4">
@@ -42,39 +42,29 @@
 
   <!-- Profile content -->
   @if (!isLoading() && !error() && user()) {
-    <div class="max-w-2xl mx-auto">
+    <div class="max-w-5xl mx-auto px-4">
       <!-- Profile Header -->
-      <header class="p-6 pb-4">
-        <!-- Back button -->
-        <button
-          type="button"
-          (click)="goBack()"
-          class="mb-4 p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors"
-          aria-label="Torna indietro"
-        >
-          <lucide-icon [img]="ArrowLeftIcon" [size]="24" />
-        </button>
+      <header class="relative p-4 pb-3">
+        <!-- Gradient background for header -->
+        <div class="absolute inset-0 bg-gradient-to-br from-primary-500/10 via-purple-500/5 to-pink-500/10 dark:from-primary-500/5 dark:via-purple-500/5 dark:to-pink-500/5 rounded-b-3xl -z-10"></div>
 
-        <!-- Top row: Avatar + Settings -->
-        <div class="flex items-start justify-between mb-4">
-          <!-- Avatar with online status -->
-          <div class="relative">
-            <app-avatar
-              [src]="user()!.profilePictureUrl"
-              [alt]="user()!.nomeCompleto"
-              [name]="user()!.nomeCompleto"
-              size="xl"
-              [status]="isOwnProfile() ? 'none' : (isOnline() ? 'online' : 'none')"
-              class="ring-4 ring-white dark:ring-gray-900"
-            />
-          </div>
+        <!-- Top row: Back button + Settings -->
+        <div class="flex items-center justify-between mb-3">
+          <button
+            type="button"
+            (click)="goBack()"
+            class="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors"
+            aria-label="Torna indietro"
+          >
+            <lucide-icon [img]="ArrowLeftIcon" [size]="24" />
+          </button>
 
           <!-- Settings button (only for own profile) -->
           @if (isOwnProfile()) {
             <button
               type="button"
               (click)="goToSettings()"
-              class="p-2.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               aria-label="Impostazioni"
             >
               <lucide-icon [img]="SettingsIcon" [size]="24" />
@@ -82,17 +72,30 @@
           }
         </div>
 
-        <!-- Name and username -->
-        <div class="mb-3">
-          <h1 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-            {{ user()!.nomeCompleto }}
-            @if (user()!.isAdmin) {
-              <span class="text-primary-500">✓</span>
-            }
-          </h1>
-          <p class="text-gray-500 dark:text-gray-400">
-            &#64;{{ user()!.username }}
-          </p>
+        <!-- Avatar + Info row -->
+        <div class="flex items-center gap-4 mb-3">
+          <!-- Avatar with online status -->
+          <app-avatar
+            [src]="user()!.profilePictureUrl"
+            [alt]="user()!.nomeCompleto"
+            [name]="user()!.nomeCompleto"
+            size="xl"
+            [status]="isOwnProfile() ? 'none' : (isOnline() ? 'online' : 'none')"
+            class="ring-4 ring-white dark:ring-gray-900 shadow-lg shrink-0"
+          />
+
+          <!-- Name and username -->
+          <div class="min-w-0">
+            <h1 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+              {{ user()!.nomeCompleto }}
+              @if (user()!.isAdmin) {
+                <span class="text-primary-500">✓</span>
+              }
+            </h1>
+            <p class="text-gray-500 dark:text-gray-400">
+              &#64;{{ user()!.username }}
+            </p>
+          </div>
         </div>
 
         <!-- Bio -->
@@ -103,24 +106,24 @@
         }
 
         <!-- Stats -->
-        <div class="flex gap-6 py-3 border-t border-gray-100 dark:border-gray-800">
-          <div class="flex flex-col">
-            <span class="text-lg font-bold text-gray-900 dark:text-white">
+        <div class="flex gap-6 py-4 mt-2 border-t border-gray-200 dark:border-gray-700">
+          <div class="flex flex-col items-center flex-1 px-3 py-2 rounded-xl bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+            <span class="text-xl font-bold bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent">
               {{ formattedPostsCount() }}
             </span>
-            <span class="text-sm text-gray-500 dark:text-gray-400">Post</span>
+            <span class="text-xs font-medium text-gray-600 dark:text-gray-400">Post</span>
           </div>
-          <div class="flex flex-col">
-            <span class="text-lg font-bold text-gray-900 dark:text-white">
+          <div class="flex flex-col items-center flex-1 px-3 py-2 rounded-xl bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+            <span class="text-xl font-bold bg-gradient-to-r from-pink-600 to-rose-400 bg-clip-text text-transparent">
               {{ formattedLikesCount() }}
             </span>
-            <span class="text-sm text-gray-500 dark:text-gray-400">Like</span>
+            <span class="text-xs font-medium text-gray-600 dark:text-gray-400">Like</span>
           </div>
-          <div class="flex flex-col">
-            <span class="text-lg font-bold text-gray-900 dark:text-white">
+          <div class="flex flex-col items-center flex-1 px-3 py-2 rounded-xl bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+            <span class="text-xl font-bold bg-gradient-to-r from-purple-600 to-indigo-400 bg-clip-text text-transparent">
               {{ formattedCommentsCount() }}
             </span>
-            <span class="text-sm text-gray-500 dark:text-gray-400">Commenti</span>
+            <span class="text-xs font-medium text-gray-600 dark:text-gray-400">Commenti</span>
           </div>
         </div>
       </header>
@@ -131,7 +134,7 @@
           <button
             type="button"
             (click)="setTab('posts')"
-            class="flex-1 py-4 text-sm font-semibold transition-colors relative"
+            class="flex-1 py-4 text-sm font-semibold transition-all relative"
             [class.text-gray-900]="activeTab() === 'posts'"
             [class.dark:text-white]="activeTab() === 'posts'"
             [class.text-gray-500]="activeTab() !== 'posts'"
@@ -139,13 +142,13 @@
           >
             Post
             @if (activeTab() === 'posts') {
-              <span class="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary-500 rounded-t-full"></span>
+              <span class="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-gradient-to-r from-primary-600 to-primary-400 rounded-t-full shadow-lg shadow-primary-500/50"></span>
             }
           </button>
           <button
             type="button"
             (click)="setTab('media')"
-            class="flex-1 py-4 text-sm font-semibold transition-colors relative"
+            class="flex-1 py-4 text-sm font-semibold transition-all relative"
             [class.text-gray-900]="activeTab() === 'media'"
             [class.dark:text-white]="activeTab() === 'media'"
             [class.text-gray-500]="activeTab() !== 'media'"
@@ -153,7 +156,7 @@
           >
             Media
             @if (activeTab() === 'media') {
-              <span class="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary-500 rounded-t-full"></span>
+              <span class="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-gradient-to-r from-pink-600 to-rose-400 rounded-t-full shadow-lg shadow-pink-500/50"></span>
             }
           </button>
         </div>
@@ -195,30 +198,36 @@
               </p>
             </div>
           } @else {
-            <div class="divide-y divide-gray-200 dark:divide-gray-700">
+            <div
+              class="space-y-4 p-4"
+              appInfiniteScroll
+              [useWindow]="true"
+              [threshold]="400"
+              [disabled]="isLoadingMore() || !hasMorePosts()"
+              (scrolled)="loadMorePosts()"
+            >
               @for (post of posts(); track post.id) {
-                <div class="p-4">
-                  <app-post-card-component
-                    [post]="post"
-                    (deleted)="onPostDeleted($event)"
-                    (edited)="onPostEdited($event)"
-                    (hidden)="onPostHidden($event)"
-                  />
-                </div>
+                <app-post-card-component
+                  [post]="post"
+                  (deleted)="onPostDeleted($event)"
+                  (edited)="onPostEdited($event)"
+                  (hidden)="onPostHidden($event)"
+                />
               }
             </div>
 
-            @if (hasMorePosts()) {
-              <div class="p-4">
-                <app-button
-                  variant="outline"
-                  [fullWidth]="true"
-                  [loading]="isLoadingMore()"
-                  (clicked)="loadMorePosts()"
-                >
-                  Carica altri post
-                </app-button>
+            <!-- Loader per caricamento altri post -->
+            @if (isLoadingMore()) {
+              <div class="flex justify-center py-4">
+                <app-spinner size="md" />
               </div>
+            }
+
+            <!-- Messaggio fine post -->
+            @if (!hasMorePosts() && posts().length > 0) {
+              <p class="text-center text-sm text-gray-400 dark:text-gray-500 py-4">
+                Hai visto tutti i post 🎉
+              </p>
             }
           }
         }
@@ -248,12 +257,19 @@
               </p>
             </div>
           } @else {
-            <div class="grid grid-cols-3 gap-0.5">
+            <div
+              class="grid grid-cols-3 gap-0.5"
+              appInfiniteScroll
+              [useWindow]="true"
+              [threshold]="400"
+              [disabled]="isLoadingMore() || !hasMorePosts()"
+              (scrolled)="loadMorePosts()"
+            >
               @for (post of mediaPosts(); track post.id) {
                 <button
                   type="button"
                   class="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800 cursor-pointer hover:opacity-90 transition-opacity"
-                  (click)="router.navigate(['/post', post.id])"
+                  (click)="openImagePreview(post.imageUrl!)"
                 >
                   <img
                     [src]="post.imageUrl"
@@ -265,17 +281,18 @@
               }
             </div>
 
-            @if (hasMorePosts()) {
-              <div class="p-4">
-                <app-button
-                  variant="outline"
-                  [fullWidth]="true"
-                  [loading]="isLoadingMore()"
-                  (clicked)="loadMorePosts()"
-                >
-                  Carica altre foto
-                </app-button>
+            <!-- Loader per caricamento altre foto -->
+            @if (isLoadingMore()) {
+              <div class="flex justify-center py-4">
+                <app-spinner size="md" />
               </div>
+            }
+
+            <!-- Messaggio fine foto -->
+            @if (!hasMorePosts() && mediaPosts().length > 0) {
+              <p class="text-center text-sm text-gray-400 dark:text-gray-500 py-4">
+                Hai visto tutte le foto 🎉
+              </p>
             }
           }
         }
@@ -283,3 +300,29 @@
     </div>
   }
 </div>
+
+<!-- Image Preview Modal (tab Media) -->
+@if (selectedImageUrl()) {
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+    (click)="closeImagePreview()"
+  >
+    <!-- Close button -->
+    <button
+      type="button"
+      class="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
+      (click)="closeImagePreview()"
+      aria-label="Chiudi anteprima"
+    >
+      <lucide-icon [img]="XIcon" [size]="24" />
+    </button>
+
+    <!-- Image -->
+    <img
+      [src]="selectedImageUrl()!"
+      [alt]="'Foto di ' + user()?.nomeCompleto"
+      class="max-w-full max-h-full object-contain"
+      (click)="$event.stopPropagation()"
+    />
+  </div>
+}

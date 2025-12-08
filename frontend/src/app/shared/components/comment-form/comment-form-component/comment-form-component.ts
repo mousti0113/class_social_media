@@ -1,6 +1,6 @@
 import { Component, input, output, signal, inject, computed, viewChild, ElementRef, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, Send, X } from 'lucide-angular';
+import { LucideAngularModule, Send, X, Reply } from 'lucide-angular';
 import { CommentService } from '../../../../core/api/comment-service';
 import { ToastService } from '../../../../core/services/toast-service';
 import { AuthStore } from '../../../../core/stores/auth-store';
@@ -28,7 +28,7 @@ private readonly commentService = inject(CommentService);
   readonly mentionAutocomplete = viewChild<MentionAutocompleteComponent>('mentionAutocomplete');
 
   constructor() {
-    // Quando replyTo cambia, focus e scroll sulla textarea
+    // Quando replyTo cambia, focus sulla textarea
     effect(() => {
       const reply = this.replyTo();
       if (reply) {
@@ -36,10 +36,9 @@ private readonly commentService = inject(CommentService);
         setTimeout(() => {
           const textarea = this.textareaRef()?.nativeElement;
           if (textarea) {
-            textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
             textarea.focus();
           }
-        });
+        }, 100);
       }
     });
   }
@@ -47,6 +46,7 @@ private readonly commentService = inject(CommentService);
   // Icone
   readonly SendIcon = Send;
   readonly XIcon = X;
+  readonly ReplyIcon = Reply;
 
   // ========== INPUTS ==========
 

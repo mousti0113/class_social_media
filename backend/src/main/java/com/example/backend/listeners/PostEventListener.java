@@ -8,6 +8,8 @@ import com.example.backend.events.PostUpdatedEvent;
 import com.example.backend.mappers.PostMapper;
 import com.example.backend.models.Post;
 import com.example.backend.repositories.PostRepository;
+import com.example.backend.services.CommentService;
+import com.example.backend.services.LikeService;
 import com.example.backend.services.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +41,8 @@ public class PostEventListener {
     private final SimpMessagingTemplate messagingTemplate;
     private final PostRepository postRepository;
     private final PostMapper postMapper;
+    private final LikeService likeService;
+    private final CommentService commentService;
 
     /**
      * Gestisce l'evento di creazione di un nuovo post.
@@ -141,8 +145,10 @@ public class PostEventListener {
     /**
      * Gestisce l'evento di cancellazione di un post.
      * <p>
-     * Quando un post viene cancellato (soft delete), questo listener notifica
-     * tutti gli utenti connessi via WebSocket per rimuovere il post dal feed.
+     * Quando un post viene cancellato (soft delete), questo listener:
+     * 1. Elimina tutti i like del post
+     * 2. Elimina tutti i commenti del post (soft delete)
+     * 3. Notifica tutti gli utenti connessi via WebSocket
      *
      * @param event L'evento contenente l'ID del post cancellato
      */
@@ -152,6 +158,15 @@ public class PostEventListener {
         log.info("Evento PostDeletedEvent ricevuto - Post ID: {}", event.getPostId());
 
         try {
+            // Elimina tutti i like del post
+            likeService.deleteAllLikesByPostId(event.getPostId());
+            log.info("Like eliminati per post ID: {}", event.getPostId());
+            
+            // Elimina tutti i commenti del post
+            commentService.deleteAllCommentsByPostId(event.getPostId());
+            log.info("Commenti eliminati per post ID: {}", event.getPostId());
+            
+            // Broadcast WebSocket
             Map<String, Object> deletePayload = new HashMap<>();
             deletePayload.put("postId", event.getPostId());
             deletePayload.put("type", "deleted");
@@ -160,7 +175,7 @@ public class PostEventListener {
             
             log.info("Post cancellato ID: {} broadcast via WebSocket su /topic/posts/deleted", event.getPostId());
         } catch (Exception e) {
-            log.error("Errore broadcast post delete ID: {} via WebSocket: {}", event.getPostId(), e.getMessage());
+            log.error("Errore gestione eliminazione post ID: {} - {}", event.getPostId(), e.getMessage());
         }
     }
 

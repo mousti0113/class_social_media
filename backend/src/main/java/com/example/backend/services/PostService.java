@@ -214,14 +214,18 @@ public class PostService {
         }
 
         // Elimina l'immagine da Cloudinary se presente
+        // Se l'admin elimina un post di un altro utente, usa l'ID del proprietario per l'eliminazione dell'immagine
         if (post.getImageUrl() != null && !post.getImageUrl().isEmpty()) {
             try {
                 log.debug("Eliminazione immagine da Cloudinary - URL: {}", post.getImageUrl());
-                imageService.deleteImage(post.getImageUrl(), userId);
+                // Se è un admin che elimina il post di un altro utente, usa l'ID del proprietario
+                Long imageOwnerId = isAdmin && !isAuthor ? post.getUser().getId() : userId;
+                imageService.deleteImage(post.getImageUrl(), imageOwnerId);
                 log.info("Immagine eliminata con successo da Cloudinary");
             } catch (Exception e) {
-                log.error("Errore durante l'eliminazione dell'immagine da Cloudinary: {}", e.getMessage());
+                log.warn("Impossibile eliminare l'immagine da Cloudinary: {}. Il post verrà comunque eliminato.", e.getMessage());
                 // Continua comunque con l'eliminazione del post
+                // L'immagine rimarrà su Cloudinary ma il post sarà soft-deleted
             }
         }
 

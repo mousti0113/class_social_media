@@ -41,7 +41,7 @@
         />
 
         <!-- Username -->
-        <div class="relative">
+        <div>
           <app-input-component
             formControlName="username"
             label="Username"
@@ -53,23 +53,23 @@
           />
           <!-- Indicatore verifica username -->
           @if (checkingUsername()) {
-            <span class="absolute right-3 top-9 text-xs text-gray-500">
-              Verifica...
+            <span class="block text-xs text-gray-500 mt-1 ml-1">
+              Verifica disponibilità...
             </span>
           } @else if (usernameAvailable() === true) {
-            <span class="absolute right-3 top-9 text-xs text-success-500">
-              ✓ Disponibile
+            <span class="block text-xs text-success-600 dark:text-success-400 mt-1 ml-1">
+              ✓ Username disponibile
             </span>
           }
         </div>
 
         <!-- Email -->
-        <div class="relative">
+        <div>
           <app-input-component
             formControlName="email"
             type="email"
             label="Email"
-            placeholder="iltuonome@example.com"
+            placeholder="nome.cognome@marconirovereto.it"
             [required]="true"
             [error]="getFieldError('email')"
             autocomplete="email"
@@ -77,12 +77,12 @@
           />
           <!-- Indicatore verifica email -->
           @if (checkingEmail()) {
-            <span class="absolute right-3 top-9 text-xs text-gray-500">
-              Verifica...
+            <span class="block text-xs text-gray-500 mt-1 ml-1">
+              Verifica disponibilità...
             </span>
           } @else if (emailAvailable() === true) {
-            <span class="absolute right-3 top-9 text-xs text-success-500">
-              ✓ Disponibile
+            <span class="block text-xs text-success-600 dark:text-success-400 mt-1 ml-1">
+              ✓ Email disponibile
             </span>
           }
         </div>

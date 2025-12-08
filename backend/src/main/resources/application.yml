@@ -5,17 +5,18 @@ spring:
   application:
     name: backend
   datasource:
-    url: ${JDBC_DATABASE_URL:jdbc:mysql://localhost:3306/class_social_media?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-    username: ${DB_USERNAME:dbuser}
-    password: ${DB_PASSWORD:secret}
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${JDBC_DATABASE_URL:jdbc:postgresql://localhost:5432/beetUs_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      
+      ddl-auto: ${DDL_AUTO:create-drop}
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
+        dialect: org.hibernate.dialect.PostgreSQLDialect
     # PRODUZIONE: Disabilitare show-sql per performance
     show-sql: ${SHOW_SQL:false}
   security:
@@ -40,11 +41,12 @@ spring:
             timeout: 5000
             writetimeout: 5000
 jwt:
-  # CRITICO: Impostare JWT_SECRET come variabile d'ambiente in produzione!
-  # Generare con: openssl rand -base64 64
+
   # L'applicazione NON si avvierà se questo valore rimane "default-secret"
   secret: ${JWT_SECRET:default-secret}
-  access-token-expiration: 1800000
+  # Access token validity: 30 minuti (1800000ms)
+  # Il refresh automatico avviene 5 minuti prima della scadenza (vedi TokenRefreshService)
+  access-token-expiration: ${JWT_ACCESS_EXPIRATION:1800000}
   refresh-token-expiration: 2592000000
 
 cors:

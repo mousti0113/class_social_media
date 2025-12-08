@@ -1,0 +1,62 @@
+# fly.toml - Configurazione Fly.io per Spring Boot Backend
+app = "beetUs-backend"  
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  SPRING_PROFILE = "production"
+  DDL_AUTO = "update"  
+  SHOW_SQL = "false"
+  LOG_LEVEL = "WARN"
+  APP_LOG_LEVEL = "INFO"
+  MAX_STUDENTS = "17"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false  # Mantieni sempre attivo
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 250
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512  # 512MB (rientra nel piano gratuito)
+
+[mounts]
+  source = "uploads_data"
+  destination = "/app/uploads"
+  initial_size = "1GB"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "10s"
+    grace_period = "30s"
+
+  [[services.http_checks]]
+    interval = "30s"
+    timeout = "10s"
+    grace_period = "30s"
+    method = "get"
+    path = "/actuator/health"
+    protocol = "http"

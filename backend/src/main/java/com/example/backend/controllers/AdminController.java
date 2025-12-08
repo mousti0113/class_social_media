@@ -2,6 +2,7 @@ package com.example.backend.controllers;
 
 import com.example.backend.config.CurrentUser;
 import com.example.backend.dto.AuditLogDTO;
+import com.example.backend.dtos.response.AdminUserListDTO;
 import com.example.backend.exception.UnauthorizedException;
 import com.example.backend.models.AdminAuditLog;
 import com.example.backend.models.AzioneAdmin;
@@ -29,6 +30,31 @@ public class AdminController {
 
     private final AdminService adminService;
     private static final String MESSAGE_KEY="message";
+
+    /**
+     * GET /api/admin/users
+     * Ottiene la lista completa degli utenti con paginazione
+     * Supporta ricerca opzionale con parametro 'query'
+     */
+    @GetMapping("/users")
+    public ResponseEntity<Page<AdminUserListDTO>> getTuttiUtenti(
+            @RequestParam(required = false) String query,
+            @PageableDefault(size = 20, sort = "id") Pageable pageable,
+            @CurrentUser User admin) {
+
+        log.debug("GET /api/admin/users - Admin: {} - Query: {}", admin.getUsername(), query);
+
+        validateAdminUser(admin);
+
+        Page<AdminUserListDTO> users;
+        if (query != null && !query.trim().isEmpty()) {
+            users = adminService.cercaUtenti(query.trim(), pageable);
+        } else {
+            users = adminService.getTuttiUtenti(pageable);
+        }
+
+        return ResponseEntity.ok(users);
+    }
 
     /**
      * DELETE /api/admin/users/{userId}

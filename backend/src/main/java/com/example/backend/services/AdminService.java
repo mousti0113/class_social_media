@@ -1,11 +1,16 @@
 package com.example.backend.services;
 
+import com.example.backend.dtos.response.AdminUserListDTO;
+import com.example.backend.events.CommentDeletedEvent;
+import com.example.backend.events.DeleteMentionsEvent;
+import com.example.backend.exception.AdminProtectionException;
 import com.example.backend.exception.InvalidInputException;
 import com.example.backend.models.*;
 import com.example.backend.repositories.*;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -36,11 +41,50 @@ public class AdminService {
     private final HiddenPostRepository hiddenPostRepository;
     private final HiddenCommentRepository hiddenCommentRepository;
     private final MentionRepository mentionRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     private static final String TARGET_TYPE_USER = "USER";
     private static final String TARGET_TYPE_POST = "POST";
     private static final String TARGET_TYPE_COMMENT = "COMMENT";
     private static final String USER_NOT_FOUND_MESSAGE = "Utente non trovato";
+
+    /**
+     * Ottiene la lista completa degli utenti con informazioni admin
+     * Include: id, username, nome, email, isAdmin, isActive, profilePicture
+     */
+    public Page<AdminUserListDTO> getTuttiUtenti(Pageable pageable) {
+        log.debug("Caricamento lista utenti paginata");
+
+        Page<User> users = userRepository.findAll(pageable);
+
+        return users.map(this::mapToAdminUserListDTO);
+    }
+
+    /**
+     * Cerca utenti per username o nome completo
+     */
+    public Page<AdminUserListDTO> cercaUtenti(String query, Pageable pageable) {
+        log.debug("Ricerca utenti con query: {}", query);
+
+        Page<User> users = userRepository.searchByUsernameOrFullName(query, pageable);
+
+        return users.map(this::mapToAdminUserListDTO);
+    }
+
+    /**
+     * Mappa User a AdminUserListDTO
+     */
+    private AdminUserListDTO mapToAdminUserListDTO(User user) {
+        return AdminUserListDTO.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .nomeCompleto(user.getFullName())
+                .email(user.getEmail())
+                .profilePictureUrl(user.getProfilePictureUrl())
+                .isAdmin(user.getIsAdmin())
+                .isActive(user.getIsActive())
+                .build();
+    }
 
     /**
      * Elimina un utente e tutti i suoi contenuti
@@ -54,7 +98,7 @@ public class AdminService {
                     .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND_MESSAGE));
             // Impedisce eliminazione admin
             if (target.getIsAdmin().booleanValue()) {
-                throw new IllegalStateException("Non è possibile eliminare un account admin");
+                throw new AdminProtectionException("Non è possibile eliminare un account admin");
             }
 
             // Log audit PRIMA di eliminare
@@ -131,11 +175,11 @@ public class AdminService {
             // 3.1 Messaggi diretti
             eliminaTuttiMessaggi(userId);
 
-            // 3.2 Post (cascade elimina commenti e like associati)
-            eliminaTuttiPost(userId);
-
-            // 3.3 Commenti su post di altri
+            // 3.2 Commenti su post di altri (DEVE essere eliminato PRIMA dei post per evitare violazione FK)
             eliminaTuttiCommenti(userId);
+
+            // 3.3 Post (ora i commenti sono stati eliminati)
+            eliminaTuttiPost(userId);
 
             // 3.4 Like su post di altri
             eliminaTuttiLike(userId);
@@ -162,7 +206,7 @@ public class AdminService {
                     .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND_MESSAGE));
 
             if (target.getIsAdmin().booleanValue()) {
-                throw new IllegalStateException("Non è possibile disattivare un account admin");
+                throw new AdminProtectionException("Non è possibile disattivare un account admin");
             }
 
             target.setIsActive(false);
@@ -324,7 +368,7 @@ public class AdminService {
     }
 
     /**
-     * Elimina un commento specifico
+     * Elimina un commento specifico (soft delete tramite CommentService)
      */
     @Transactional
     public void eliminaCommento(Long adminId, Long commentId, HttpServletRequest request) {
@@ -334,23 +378,68 @@ public class AdminService {
             Comment comment = commentRepository.findById(commentId)
                     .orElseThrow(() -> new RuntimeException("Commento non trovato"));
 
-            // Elimina il commento
-            commentRepository.delete(comment);
+            Long postId = comment.getPost().getId();
+            String commentAuthorUsername = comment.getUser().getUsername();
+
+            // Elimina ricorsivamente il commento e tutte le sue risposte
+            int deletedCount = deleteCommentAndChildrenAdmin(comment);
 
             auditService.logAzioneAdmin(
                     admin,
                     AzioneAdmin.ELIMINA_COMMENTO,
-                    "Eliminazione commento ID " + commentId + " di " + comment.getUser().getUsername(),
+                    "Eliminazione commento ID " + commentId + " di " + commentAuthorUsername + " (" + deletedCount + " commenti totali eliminati incluse risposte)",
                     TARGET_TYPE_COMMENT,
                     commentId,
                     comment.getUser(),
                     request);
 
-            log.info("Commento {} eliminato", commentId);
+            log.info("Admin: Commento {} e {} risposte eliminati con successo (soft delete)", commentId, deletedCount - 1);
         } else {
             throw new InvalidInputException("ID admin e ID commento sono richiesti");
         }
 
+    }
+
+    /**
+     * Elimina ricorsivamente un commento e tutti i suoi figli (soft delete) - versione admin.
+     * Decrementa il contatore del post e pubblica eventi per ogni commento eliminato.
+     *
+     * @param comment Il commento da eliminare
+     * @return Il numero totale di commenti eliminati (incluso il parent)
+     */
+    private int deleteCommentAndChildrenAdmin(Comment comment) {
+        if (comment.getIsDeletedByAuthor()) {
+            // Già eliminato, skippa
+            return 0;
+        }
+
+        Long postId = comment.getPost().getId();
+        Long commentId = comment.getId();
+        int deletedCount = 0;
+
+        // 1. Trova e elimina ricorsivamente tutti i figli
+        List<Comment> children = commentRepository.findAllChildCommentsByParentId(commentId);
+        for (Comment child : children) {
+            deletedCount += deleteCommentAndChildrenAdmin(child);
+        }
+
+        // 2. Elimina il commento corrente (soft delete)
+        comment.setIsDeletedByAuthor(true);
+        commentRepository.save(comment);
+        deletedCount++;
+
+        // 3. Decrementa il contatore del post
+        postRepository.updateCommentsCount(postId, -1);
+
+        // 4. Pubblica evento per eliminazione menzioni asincrona
+        eventPublisher.publishEvent(new DeleteMentionsEvent(MentionableType.COMMENT, commentId));
+        log.debug("Evento DeleteMentionsEvent pubblicato per commento ID: {}", commentId);
+
+        // 5. Pubblica evento per broadcast WebSocket
+        eventPublisher.publishEvent(new CommentDeletedEvent(postId, commentId));
+        log.debug("Evento CommentDeletedEvent pubblicato per commento ID: {}", commentId);
+
+        return deletedCount;
     }
 
     /**
@@ -429,9 +518,9 @@ public class AdminService {
                     .filter(User::getIsAdmin)
                     .count();
 
-            // Conta contenuti
+            // Conta contenuti (solo quelli non eliminati)
             long totalePosts = postRepository.count();
-            long totaleCommenti = commentRepository.count();
+            long totaleCommenti = commentRepository.countByIsDeletedByAuthorFalse();
             long totaleLikes = likeRepository.count();
             long totaleMessaggi = messageRepository.count();
 
@@ -583,28 +672,34 @@ public class AdminService {
      */
     private int eliminaTuttiCommenti(Long userId) {
         List<Comment> comments = commentRepository.findByUserId(userId);
-        int count = comments.size();
+        int count = 0;
 
-        if (count == 0) {
+        if (comments.isEmpty()) {
             return 0;
         }
 
-        // Ottieni lista dei post_id che verranno affetti
-        List<Long> affectedPostIds = comments.stream()
-            .map(c -> c.getPost().getId())
-            .distinct()
-            .toList();
-
-        // Elimina tutti i commenti
-        commentRepository.deleteAll(comments);
-
-        // Sincronizza atomicamente i contatori per ogni post affetto
-        for (Long postId : affectedPostIds) {
-            postRepository.syncCommentsCount(postId);
+        // Soft delete di ogni commento con eventi per WebSocket
+        for (Comment comment : comments) {
+            if (!comment.getIsDeletedByAuthor()) {
+                Long postId = comment.getPost().getId();
+                Long commentId = comment.getId();
+                
+                // Soft delete
+                comment.setIsDeletedByAuthor(true);
+                commentRepository.save(comment);
+                
+                // Decrementa contatore
+                postRepository.updateCommentsCount(postId, -1);
+                
+                // Pubblica eventi
+                eventPublisher.publishEvent(new DeleteMentionsEvent(MentionableType.COMMENT, commentId));
+                eventPublisher.publishEvent(new CommentDeletedEvent(postId, commentId));
+                
+                count++;
+            }
         }
 
-        log.debug("Eliminati {} commenti dell'utente {} da {} post",
-                count, userId, affectedPostIds.size());
+        log.debug("Soft delete di {} commenti dell'utente {}", count, userId);
         return count;
     }
 

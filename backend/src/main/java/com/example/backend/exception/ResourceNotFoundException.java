@@ -5,7 +5,8 @@ package com.example.backend.exception;
  */
 public class ResourceNotFoundException extends ApplicationException {
     public ResourceNotFoundException(String resourceName, String fieldName, Object fieldValue) {
-        super(String.format("%s non trovato con %s: '%s'", resourceName, fieldName, fieldValue));
+        // Non mostra l'ID per motivi di sicurezza
+        super(String.format("%s non trovato", resourceName));
     }
 
     public ResourceNotFoundException(String message) {

@@ -337,7 +337,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this.themeStore.useSystemPreference();
     } else {
       // Imposta il tema specifico
-      this.themeStore.setTheme(theme as Theme);
+      this.themeStore.setTheme(theme);
     }
 
     this.toastService.success('Tema applicato');

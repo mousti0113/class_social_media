@@ -1,11 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { LucideAngularModule, Ellipsis, Pencil, Trash2, EyeOff, Flag, Reply, ChevronDown, ChevronUp } from 'lucide-angular';
+import { map } from 'rxjs/operators';
 import { AvatarComponent } from '../../../ui/avatar/avatar-component/avatar-component';
 import { DropdownComponent } from '../../../ui/dropdown/dropdown-component/dropdown-component';
 import { TimeAgoComponent } from '../../time-ago/time-ago-component/time-ago-component';
 import { SafeMentionTextComponent } from '../../safe-mention-text/safe-mention-text.component';
 import { CommentService } from '../../../../core/api/comment-service';
+import { AdminService } from '../../../../core/api/admin-service';
 import { DialogService } from '../../../../core/services/dialog-service';
 import { ToastService } from '../../../../core/services/toast-service';
 import { AuthStore } from '../../../../core/stores/auth-store';
@@ -24,6 +26,7 @@ import { CommentResponseDTO } from '../../../../models';
 })
 export class CommentComponent {
  private readonly commentService = inject(CommentService);
+  private readonly adminService = inject(AdminService);
   private readonly dialogService = inject(DialogService);
   private readonly toastService = inject(ToastService);
   private readonly authStore = inject(AuthStore);
@@ -182,7 +185,13 @@ export class CommentComponent {
 
     if (!confirmed) return;
 
-    this.commentService.deleteComment(this.comment().id).subscribe({
+    // Se è admin ma non owner, usa endpoint admin
+    const useAdminEndpoint = this.isAdmin() && !this.isOwner();
+    const deleteRequest = useAdminEndpoint
+      ? this.adminService.deleteComment(this.comment().id).pipe(map(() => void 0))
+      : this.commentService.deleteComment(this.comment().id);
+
+    deleteRequest.subscribe({
       next: () => {
         this.deleted.emit(this.comment().id);
         this.toastService.success('Commento eliminato');

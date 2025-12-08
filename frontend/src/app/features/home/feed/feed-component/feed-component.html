@@ -68,7 +68,9 @@
         <div
           class="space-y-6"
           appInfiniteScroll
-          [threshold]="200"
+          [useWindow]="true"
+          [threshold]="400"
+          [disabled]="isLoadingMore() || !hasMore()"
           (scrolled)="loadMorePosts()"
         >
           @for (post of posts(); track trackByPostId($index, post)) {

@@ -328,7 +328,7 @@ public class UserService {
         }
 
         // Protegge account amministratore
-        if (user.getIsAdmin()) {
+        if (user.getIsAdmin().booleanValue()) {
             throw new InvalidInputException("Non è possibile disattivare un account admin");
         }
 

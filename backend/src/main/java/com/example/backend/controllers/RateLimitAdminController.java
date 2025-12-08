@@ -2,6 +2,8 @@ package com.example.backend.controllers;
 
 import com.example.backend.config.RateLimitService;
 import com.example.backend.config.RateLimitType;
+import com.example.backend.exception.ResourceNotFoundException;
+import com.example.backend.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +31,7 @@ import java.util.Map;
 public class RateLimitAdminController {
 
     private final RateLimitService rateLimitService;
+    private final UserRepository userRepository;
 
     /**
      * Ottiene statistiche generali sul rate limiting.
@@ -65,6 +68,10 @@ public class RateLimitAdminController {
             @RequestParam RateLimitType type) {
 
         log.info("Admin resetta rate limit - User: {}, Type: {}", username, type);
+
+        // Verifica che l'utente esista
+        userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Utente non trovato"));
 
         String key = "user:" + username;
         rateLimitService.resetBucket(key, type);
@@ -117,6 +124,10 @@ public class RateLimitAdminController {
     public ResponseEntity<Map<String, Object>> getUserTokens(
             @PathVariable String username,
             @RequestParam RateLimitType type) {
+
+        // Verifica che l'utente esista
+        userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Utente non trovato"));
 
         String key = "user:" + username;
         long tokens = rateLimitService.getAvailableTokens(key, type);

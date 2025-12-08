@@ -123,10 +123,11 @@ export class HeaderComponent implements OnInit, OnDestroy {
     event.stopPropagation();
     this.isUserMenuOpen.set(false);
     this.isNotificationsOpen.update(v => !v);
-    
-    // Se apro le notifiche, carico quelle recenti
+
+    // Se apro le notifiche, carico la prima pagina (le più recenti)
+    // Usa lo stesso endpoint della pagina notifiche per consistenza
     if (this.isNotificationsOpen()) {
-      this.notificationStore.loadRecentNotifications();
+      this.notificationStore.loadNotifications(0, 10);
     }
   }
 

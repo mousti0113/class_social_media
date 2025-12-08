@@ -1,6 +1,8 @@
+# Environment & Secrets
 .env
 .env.local
 .env.*.local
+
 
 # Docker volumes
 mysql_data/
@@ -14,3 +16,12 @@ backend/logs/
 .vscode/
 .idea/
 *.iml
+
+# Firebase
+.firebase/
+.firebaserc
+firebase-debug.log
+firebase-debug.*.log
+
+# Fly.io
+fly.toml.local

@@ -43,8 +43,8 @@ export class ConversationsComponent implements OnInit, OnDestroy {
   private readonly onlineUsersStore = inject(OnlineUsersStore);
   private readonly typingStore = inject(TypingStore);
   private readonly router = inject(Router);
-  private subscriptions: Subscription[] = [];
-  private searchSubject = new Subject<string>();
+  private readonly subscriptions: Subscription[] = [];
+  private readonly searchSubject = new Subject<string>();
 
   // Icone
   readonly ArrowLeftIcon = ArrowLeft;
@@ -242,6 +242,6 @@ export class ConversationsComponent implements OnInit, OnDestroy {
   }
 
   private escapeRegex(string: string): string {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return string.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 }

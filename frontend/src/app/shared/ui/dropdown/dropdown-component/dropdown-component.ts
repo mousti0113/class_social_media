@@ -11,6 +11,7 @@ export type DropdownPlacement = 'bottom-start' | 'bottom-end' | 'top-start' | 't
   imports: [CommonModule],
   templateUrl: './dropdown-component.html',
   styleUrl: './dropdown-component.scss',
+ 
 })
 export class DropdownComponent {
   /**

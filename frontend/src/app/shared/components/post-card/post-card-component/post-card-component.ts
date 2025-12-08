@@ -101,6 +101,11 @@ export class PostCardComponent {
   readonly isImagePreviewOpen = signal<boolean>(false);
 
   /**
+   * Contatore commenti locale (aggiornato via WebSocket)
+   */
+  readonly localCommentsCount = signal<number | null>(null);
+
+  /**
    * Lunghezza massima contenuto
    */
   readonly MAX_CONTENT_LENGTH = 5000;
@@ -117,6 +122,14 @@ export class PostCardComponent {
    * Verifica se l'utente corrente è admin
    */
   readonly isAdmin = computed(() => this.authStore.isAdmin());
+
+  /**
+   * Conteggio commenti effettivo (locale o dal post)
+   */
+  readonly effectiveCommentsCount = computed(() => {
+    const local = this.localCommentsCount();
+    return local ?? this.post().commentsCount;
+  });
 
 
   /**
@@ -255,4 +268,10 @@ export class PostCardComponent {
     this.isImagePreviewOpen.set(false);
   }
 
+  /**
+   * Gestisce l'aggiornamento del conteggio commenti via WebSocket
+   */
+  onCommentsCountChanged(count: number): void {
+    this.localCommentsCount.set(count);
+  }
 }

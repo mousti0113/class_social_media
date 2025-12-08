@@ -117,12 +117,16 @@ public class ImageService {
      * <p>
      * Controlla se l'immagine appartiene a:
      * - Un post dell'utente
-     * - Il profilo dell'utente
+     * - Una foto profilo dell'utente (attuale o vecchia)
+     * <p>
+     * Per le foto profilo, permette l'eliminazione anche se l'URL
+     * non è più presente nel database (es. foto sostituita).
+     * La verifica avviene controllando che l'immagine sia nella
+     * cartella profiles e che l'utente esista.
      *
      * @param imageUrl URL dell'immagine
      * @param userId ID dell'utente
      * @throws UnauthorizedException se l'utente non è proprietario
-     * @throws ResourceNotFoundException se l'immagine non esiste nel database
      */
     private void verifyImageOwnership(String imageUrl, Long userId) {
         // Verifica se è un'immagine di un post
@@ -132,11 +136,23 @@ public class ImageService {
             return;
         }
 
-        // Verifica se è l'immagine del profilo
+        // Verifica se è l'immagine del profilo corrente
         boolean isProfileImage = userRepository.existsByIdAndProfilePictureUrl(userId, imageUrl);
         if (isProfileImage) {
-            log.debug("Immagine è la foto profilo dell'utente {}", userId);
+            log.debug("Immagine è la foto profilo attuale dell'utente {}", userId);
             return;
+        }
+
+        // Per le foto profilo vecchie (già sostituite), verifica che:
+        // 1. L'immagine sia nella cartella profiles
+        // 2. L'utente esista nel database
+        String publicId = extractPublicIdFromUrl(imageUrl);
+        if (publicId.startsWith("classconnect/profiles/")) {
+            boolean userExists = userRepository.existsById(userId);
+            if (userExists) {
+                log.debug("Immagine profilo (anche vecchia) - User {} esiste, eliminazione consentita", userId);
+                return;
+            }
         }
 
         // L'immagine non appartiene all'utente

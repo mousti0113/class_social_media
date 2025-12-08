@@ -377,10 +377,6 @@ export class PostDetailComponent implements OnInit, OnDestroy {
 
   onReply(comment: CommentResponseDTO): void {
     this.replyingTo.set(comment);
-    // Scroll al form commenti
-    setTimeout(() => {
-      document.getElementById('comment-form')?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
   }
 
   onCancelReply(): void {
@@ -430,6 +426,35 @@ export class PostDetailComponent implements OnInit, OnDestroy {
     this.toastService.success(replyTo ? 'Risposta inviata' : 'Commento aggiunto');
   }
 
+  /**
+   * Gestisce l'eliminazione di un commento da parte dell'utente corrente (evento locale).
+   * Rimuove solo dalla UI in modo optimistic, il contatore verrà aggiornato via WebSocket.
+   */
+  onCommentDeletedByUser(commentId: number): void {
+    this.post.update(current => {
+      if (!current) return current;
+
+      // Rimuovi solo dalla UI, NON toccare il contatore
+      // Il contatore verrà aggiornato via WebSocket
+      const updatedCommenti = current.commenti
+        .filter(c => c.id !== commentId)
+        .map(c => ({
+          ...c,
+          risposte: c.risposte.filter(r => r.id !== commentId)
+        }));
+
+      return {
+        ...current,
+        commenti: updatedCommenti,
+        // NON aggiorniamo commentsCount qui, arriverà via WebSocket
+      };
+    });
+  }
+
+  /**
+   * Gestisce l'eliminazione di un commento ricevuta via WebSocket.
+   * Rimuove dalla UI e decrementa il contatore.
+   */
   onCommentDeleted(commentId: number): void {
     this.post.update(current => {
       if (!current) return current;

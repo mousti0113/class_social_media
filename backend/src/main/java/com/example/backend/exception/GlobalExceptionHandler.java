@@ -186,6 +186,26 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Gestisce AdminProtectionException (400)
+     */
+    @ExceptionHandler(AdminProtectionException.class)
+    public ResponseEntity<ErrorResponseDTO> handleAdminProtection(
+            AdminProtectionException ex,
+            HttpServletRequest request) {
+
+        log.warn("Tentativo operazione non permessa su admin: {} - Path: {}", ex.getMessage(), request.getRequestURI());
+
+        ErrorResponseDTO error = ErrorResponseDTO.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Admin Protection")
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    /**
      * Gestisce UsernameNotFoundException (404)
      */
     @ExceptionHandler(UsernameNotFoundException.class)

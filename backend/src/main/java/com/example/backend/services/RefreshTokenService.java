@@ -31,18 +31,17 @@ public class RefreshTokenService {
     /**
      * Crea un nuovo refresh token per l'utente
      * SICUREZZA: Il token viene hashato con BCrypt prima del salvataggio
+     * NOTA: Non elimina immediatamente i vecchi token per evitare race conditions
+     * durante il refresh automatico. I token scaduti vengono puliti periodicamente.
      */
     @Transactional
     public RefreshToken creaRefreshToken(Long userId) {
-        // Invalida vecchi token dell'utente
-        refreshTokenRepository.deleteByUserId(userId);
-
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Utente non trovato"));
 
         // Genera token in chiaro (da restituire al client)
         String plainToken = UUID.randomUUID().toString();
-        
+
         // Hash del token per storage sicuro
         String hashedToken = passwordEncoder.encode(plainToken);
 
@@ -54,12 +53,29 @@ public class RefreshTokenService {
                 .build();
 
         RefreshToken saved = refreshTokenRepository.save(refreshToken);
-        
-        // Imposta temporaneamente il token in chiaro per la risposta
-        // (il client ha bisogno del token non hashato)
-        saved.setToken(plainToken);
-        
-        return saved;
+
+        // Elimina vecchi token dell'utente DOPO aver creato il nuovo
+        // Questo evita race conditions durante il refresh automatico
+        refreshTokenRepository.deleteByUserIdAndIdNot(userId, saved.getId());
+
+        // Crea una copia del token salvato per restituirlo al client
+        // con il token in chiaro invece dell'hash
+         return RefreshToken.builder()
+                .id(saved.getId())
+                .user(saved.getUser())
+                .token(plainToken)  // Token in chiaro per il client
+                .expiresAt(saved.getExpiresAt())
+                .createdAt(saved.getCreatedAt())
+                .build();
+
+    }
+
+    /**
+     * Elimina i vecchi refresh token di un utente, mantenendo quello corrente
+     */
+    @Transactional
+    public void pulisciVecchiTokenUtente(Long userId, Long keepTokenId) {
+        refreshTokenRepository.deleteByUserIdAndIdNot(userId, keepTokenId);
     }
 
     /**
@@ -70,7 +86,19 @@ public class RefreshTokenService {
     public Optional<RefreshToken> verificaRefreshToken(String plainToken) {
         // Recupera solo i token non scaduti e cerca match con BCrypt
         return refreshTokenRepository.findAllValid(LocalDateTime.now()).stream()
-                .filter(rt -> passwordEncoder.matches(plainToken, rt.getToken()))
+                .filter(rt -> {
+                    try {
+                        // Verifica che il token sia in formato BCrypt prima del match
+                        String storedToken = rt.getToken();
+                        if (storedToken != null && storedToken.startsWith("$2")) {
+                            return passwordEncoder.matches(plainToken, storedToken);
+                        }
+                        return false;
+                    } catch (Exception e) {
+                        // Ignora token corrotti senza loggare warning
+                        return false;
+                    }
+                })
                 .findFirst();
     }
 
@@ -83,7 +111,19 @@ public class RefreshTokenService {
     public void eliminaRefreshToken(String plainToken) {
         // Trova il token che matcha e lo elimina
         refreshTokenRepository.findAllValid(LocalDateTime.now()).stream()
-                .filter(rt -> passwordEncoder.matches(plainToken, rt.getToken()))
+                .filter(rt -> {
+                    try {
+                        // Verifica che il token sia in formato BCrypt prima del match
+                        String storedToken = rt.getToken();
+                        if (storedToken != null && storedToken.startsWith("$2")) {
+                            return passwordEncoder.matches(plainToken, storedToken);
+                        }
+                        return false;
+                    } catch (Exception e) {
+                        // Ignora token corrotti senza loggare warning
+                        return false;
+                    }
+                })
                 .findFirst()
                 .ifPresent(refreshTokenRepository::delete);
     }
