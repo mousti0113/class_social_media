@@ -3,11 +3,11 @@ import { Environment } from './environment';
 export const environment: Environment = {
   production: true,
 
-  // Backend API URL (Fly.io)
-  apiUrl: 'https://beetus-backend.fly.dev/api',
+  // Backend API URL (Render.com)
+  apiUrl: 'https://beetus-frontend.onrender.com/api',
 
-  // WebSocket URL (Fly.io)
-  wsUrl: 'https://beetus-backend.fly.dev/ws',
+  // WebSocket URL (Render.com)
+  wsUrl: 'https://beetus-frontend.onrender.com/ws',
 
   // Cloudinary Storage Configuration 
   cloudinary: {
