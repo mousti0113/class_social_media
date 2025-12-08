@@ -1,11 +1,11 @@
 export const environment = {
-  production: false,
+  production: true,
 
-  // Backend API URL
-  apiUrl: 'http://localhost:8080/api',
+  // Backend API URL (Render.com)
+  apiUrl: 'https://beetus-frontend.onrender.com/api',
 
-  // WebSocket URL
-  wsUrl: 'http://localhost:8080/ws',
+  // WebSocket URL (Render.com)
+  wsUrl: 'https://beetus-frontend.onrender.com/ws',
 
   // Cloudinary Storage Configuration
   cloudinary: {
