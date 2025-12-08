@@ -73,7 +73,8 @@ public class SecurityConfig {
                                 "/api/auth/verify-email",
                                 "/api/auth/resend-verification",
                                 "/api/users/check/email",
-                                "/api/users/check/username"
+                                "/api/users/check/username",
+                                "/actuator/health"
                         ).permitAll()
 
                         // WebSocket
