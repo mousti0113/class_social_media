@@ -35,7 +35,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
     private final WebSocketRateLimitInterceptor webSocketRateLimitInterceptor;
     
-    @Value("${app.cors.allowed-origins}")
+    @Value("${CORS_ALLOWED_ORIGINS}")
     private String allowedOrigins;
 
     /**
