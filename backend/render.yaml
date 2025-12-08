@@ -13,7 +13,7 @@ services:
       - key: DDL_AUTO
         value: update
       - key: SHOW_SQL
-        value: false
+        value: "false"
       - key: LOG_LEVEL
         value: WARN
       - key: APP_LOG_LEVEL
