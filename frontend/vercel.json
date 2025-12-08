@@ -27,6 +27,14 @@
       "dest": "/ngsw.json"
     },
     {
+      "src": "/manifest.webmanifest",
+      "headers": {
+        "Content-Type": "application/manifest+json",
+        "Cache-Control": "public, max-age=0, must-revalidate"
+      },
+      "dest": "/manifest.webmanifest"
+    },
+    {
       "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|otf|eot))",
       "headers": {
         "Cache-Control": "public, max-age=31536000, immutable"
