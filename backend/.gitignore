@@ -34,4 +34,5 @@ build/
 
 ### environment files ###
 .env
+secrets.env
 readme.md
