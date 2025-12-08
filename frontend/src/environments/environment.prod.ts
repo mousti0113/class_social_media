@@ -1,6 +1,4 @@
-import type { Environment } from './environment';
-
-export const environment: Environment = {
+export const environment = {
   production: true,
 
   // Backend API URL (Render.com)
@@ -41,3 +39,5 @@ export const environment: Environment = {
   // Cache
   httpCacheTimeout: 5 * 60 * 1000,
 };
+
+export type Environment = typeof environment;
