@@ -1,8 +1,8 @@
 export const environment = {
   production: true,
 
-  apiUrl: 'https://overresolute-pseudorheumatic-magdalene.ngrok-free.dev/api',
-  wsUrl: 'https://overresolute-pseudorheumatic-magdalene.ngrok-free.dev/ws',
+  apiUrl: 'https://hood-impressed-rooms-del.trycloudflare.com/api',
+  wsUrl: 'https://hood-impressed-rooms-del.trycloudflare.com/ws',
 
   // Cloudinary Storage Configuration
   cloudinary: {
