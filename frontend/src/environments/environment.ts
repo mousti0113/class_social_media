@@ -1,11 +1,8 @@
 export const environment = {
   production: true,
 
-  // Backend API URL (Render.com)
-  apiUrl: 'https://beetus-frontend.onrender.com/api',
-
-  // WebSocket URL (Render.com)
-  wsUrl: 'https://beetus-frontend.onrender.com/ws',
+  apiUrl: 'https://overresolute-pseudorheumatic-magdalene.ngrok-free.dev/api',
+  wsUrl: 'wss://overresolute-pseudorheumatic-magdalene.ngrok-free.dev/ws',
 
   // Cloudinary Storage Configuration
   cloudinary: {
