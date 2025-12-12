@@ -130,11 +130,21 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
+
         // SICUREZZA: CORS origins configurabili da environment variable
         // Supporta multiple origins separate da virgola: "http://localhost:4200,https://mydomain.com"
-        List<String> allowedOrigins = Arrays.asList(corsAllowedOrigins.split(","));
-        configuration.setAllowedOrigins(allowedOrigins);
+        List<String> allowedOrigins = Arrays.stream(corsAllowedOrigins.split(","))
+                .map(String::trim)
+                .toList();
+
+        // Log per debug - RIMUOVERE IN PRODUZIONE
+        System.out.println("=== CORS Configuration ===");
+        System.out.println("Raw CORS_ALLOWED_ORIGINS: " + corsAllowedOrigins);
+        System.out.println("Parsed allowed origins: " + allowedOrigins);
+        System.out.println("========================");
+
+        // Usa setAllowedOriginPatterns invece di setAllowedOrigins per supportare wildcard
+        configuration.setAllowedOriginPatterns(allowedOrigins);
         
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));

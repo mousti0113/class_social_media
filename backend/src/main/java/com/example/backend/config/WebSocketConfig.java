@@ -10,6 +10,8 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
+import java.util.Arrays;
+
 /**
  * Configurazione WebSocket per notifiche real-time.
  * <p>
@@ -35,7 +37,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
     private final WebSocketRateLimitInterceptor webSocketRateLimitInterceptor;
     
-    @Value("${CORS_ALLOWED_ORIGINS}")
+    @Value("${cors.allowed-origins}")
     private String allowedOrigins;
 
     /**
@@ -74,10 +76,26 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
      */
     @Override
     public void registerStompEndpoints(@NonNull StompEndpointRegistry registry) {
+        // Log per debug - RIMUOVERE IN PRODUZIONE
+        System.out.println("=== WebSocket CORS Configuration ===");
+        System.out.println("Raw allowedOrigins: " + allowedOrigins);
+
+        // Trim degli spazi bianchi da ogni origin e converti in array
+        String[] origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .toArray(String[]::new);
+
+        System.out.println("Parsed origins count: " + origins.length);
+        for (String origin : origins) {
+            System.out.println("  - '" + origin + "'");
+        }
+        System.out.println("===================================");
+
         // Registra l'endpoint /ws per connessioni WebSocket
         registry.addEndpoint("/ws")
                 // Permetti connessioni dal frontend (da variabile d'ambiente)
-                .setAllowedOrigins(allowedOrigins.split(","))
+                // setAllowedOriginPatterns per WebSocket accetta String[] o varargs
+                .setAllowedOriginPatterns(origins)
                 // Abilita SockJS come fallback per browser senza supporto WebSocket nativo
                 .withSockJS();
     }
