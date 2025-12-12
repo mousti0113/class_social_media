@@ -27,26 +27,37 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     req.url.includes(endpoint)
   );
 
-  // Se è un endpoint pubblico, procedi senza modifiche
+  // Header comuni (necessario per Ngrok free tier)
+  const commonHeaders: Record<string, string> = {
+    'ngrok-skip-browser-warning': 'true'
+  };
+
+  // Se è un endpoint pubblico, aggiungi solo l'header Ngrok
   if (isPublicEndpoint) {
-    return next(req);
+    const clonedRequest = req.clone({
+      setHeaders: commonHeaders
+    });
+    return next(clonedRequest);
   }
 
   // Recupera il token di accesso
   const token = tokenService.getAccessToken();
 
-  // Se non c'è token, procede comunque (l'error interceptor gestirà il 401)
+  // Se non c'è token, procedi con solo l'header Ngrok
   if (!token) {
-    return next(req);
+    const clonedRequest = req.clone({
+      setHeaders: commonHeaders
+    });
+    return next(clonedRequest);
   }
 
-  // Clona la richiesta e aggiungi l'header Authorization
+  // Clona la richiesta e aggiungi tutti gli header
   const clonedRequest = req.clone({
     setHeaders: {
+      ...commonHeaders,
       Authorization: `Bearer ${token}`
     }
   });
 
-  // Procedi con la richiesta modificata
   return next(clonedRequest);
 };
