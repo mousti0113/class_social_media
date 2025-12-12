@@ -1,11 +1,11 @@
 export const environment = {
   production: true,
 
-  // Backend API URL (Render.com)
-  apiUrl: 'https://beetus-frontend.onrender.com/api',
+  // Backend API URL (ngrok/Cloudflare Tunnel)
+  apiUrl: 'https://hood-impressed-rooms-del.trycloudflare.com/api',
 
-  // WebSocket URL (Render.com)
-  wsUrl: 'https://beetus-frontend.onrender.com/ws',
+  // WebSocket URL (ngrok/Cloudflare Tunnel)
+  wsUrl: 'https://hood-impressed-rooms-del.trycloudflare.com/ws',
 
   // Cloudinary Storage Configuration 
   cloudinary: {
