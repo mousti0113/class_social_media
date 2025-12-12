@@ -2,7 +2,6 @@ import { Injectable, signal, inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { Subject } from 'rxjs';
 import { Client, IMessage } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
 import { TokenService } from '../auth/services/token-service';
 
 @Injectable({
@@ -49,10 +48,30 @@ export class WebsocketService {
   private commentSubscriptions = new Map<number, any>();
 
   /**
+   * Costruisce l'URL WebSocket nativo partendo dall'URL base
+   * Converte http:// -> ws:// e https:// -> wss://
+   */
+  private buildWebSocketUrl(): string {
+    const token = this.tokenService.getAccessToken();
+    let wsUrl = environment.wsUrl;
+
+    // Converti il protocollo HTTP in WebSocket
+    if (wsUrl.startsWith('https://')) {
+      wsUrl = wsUrl.replace('https://', 'wss://');
+    } else if (wsUrl.startsWith('http://')) {
+      wsUrl = wsUrl.replace('http://', 'ws://');
+    }
+
+    // Aggiungi /native per l'endpoint senza SockJS
+    // Il token viene passato come query parameter per l'handshake iniziale
+    return `${wsUrl}/native?token=${encodeURIComponent(token || '')}`;
+  }
+
+  /**
    * Connette al WebSocket server
    *
-   * Endpoint: ws://localhost:8080/ws
-   * Protocollo: STOMP over WebSocket con fallback SockJS
+   * Endpoint: ws://localhost:8080/ws/native
+   * Protocollo: STOMP over WebSocket nativo (senza SockJS)
    *
    * Richiede token JWT per autenticazione
    */
@@ -70,11 +89,14 @@ export class WebsocketService {
 
     console.log('[WebSocket] Connessione in corso...');
 
-    this.client = new Client({
-      // Usa SockJS come trasporto (fallback per browser senza WebSocket nativo)
-      webSocketFactory: () => new SockJS(environment.wsUrl),
+    const wsUrl = this.buildWebSocketUrl();
+    console.log('[WebSocket] URL:', wsUrl.replace(/token=[^&]+/, 'token=***'));
 
-      // Header di connessione (include token JWT)
+    this.client = new Client({
+      // Usa WebSocket nativo (senza SockJS per evitare problemi CORS con ngrok)
+      brokerURL: wsUrl,
+
+      // Header di connessione STOMP (include token JWT)
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },
