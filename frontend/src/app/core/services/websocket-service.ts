@@ -72,7 +72,7 @@ export class WebsocketService {
 
     this.client = new Client({
       // Usa SockJS come trasporto (fallback per browser senza WebSocket nativo)
-      webSocketFactory: () => new SockJS(`${environment.wsUrl}?token=${token}`),
+      webSocketFactory: () => new SockJS(environment.wsUrl),
 
       // Header di connessione (include token JWT)
       connectHeaders: {
