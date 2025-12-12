@@ -2,7 +2,7 @@ export const environment = {
   production: true,
 
   apiUrl: 'https://overresolute-pseudorheumatic-magdalene.ngrok-free.dev/api',
-  wsUrl: 'wss://overresolute-pseudorheumatic-magdalene.ngrok-free.dev/ws',
+  wsUrl: 'https://overresolute-pseudorheumatic-magdalene.ngrok-free.dev/ws',
 
   // Cloudinary Storage Configuration
   cloudinary: {
