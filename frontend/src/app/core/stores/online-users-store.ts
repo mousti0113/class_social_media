@@ -349,7 +349,8 @@ export class OnlineUsersStore {
 
     // Ordina ogni gruppo per nome
     grouped.forEach((users, key) => {
-      const sortedUsers = users.toSorted((a, b) => a.nomeCompleto.localeCompare(b.nomeCompleto));
+      const sortedUsers = [...users];
+      sortedUsers.sort((a, b) => a.nomeCompleto.localeCompare(b.nomeCompleto));
       grouped.set(key, sortedUsers);
     });
 
