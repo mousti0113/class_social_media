@@ -3,6 +3,7 @@ import { UserService } from '../api/user-service';
 import { UserSummaryDTO } from '../../models';
 import { interval, Subscription, firstValueFrom } from 'rxjs';
 import { TokenService } from '../auth/services/token-service';
+import { WebsocketService } from '../services/websocket-service';
 
 @Injectable({
   providedIn: 'root',
@@ -10,12 +11,14 @@ import { TokenService } from '../auth/services/token-service';
 export class OnlineUsersStore {
   private readonly userService = inject(UserService);
   private readonly tokenService = inject(TokenService);
+  private readonly websocketService = inject(WebsocketService);
 
-  // Intervallo di aggiornamento automatico (30 secondi)
-  private readonly REFRESH_INTERVAL = 30000;
-  
-  // Subscription per il polling
+  // Intervallo di aggiornamento automatico (aumentato a 5 minuti perché usiamo WebSocket)
+  private readonly REFRESH_INTERVAL = 300000; // 5 minuti
+
+  // Subscription per il polling e WebSocket
   private pollingSubscription: Subscription | null = null;
+  private websocketSubscription: Subscription | null = null;
 
   // ============================================================================
   // SIGNALS PRIVATI
@@ -60,6 +63,35 @@ export class OnlineUsersStore {
   constructor() {
     // Avvia il polling solo se l'utente è autenticato
     this.startPolling();
+
+    // Sottoscrivi agli eventi WebSocket per aggiornamenti real-time
+    this.subscribeToWebSocketEvents();
+  }
+
+  // ============================================================================
+  // METODI PUBBLICI - Gestione WebSocket
+  // ============================================================================
+
+  /**
+   * Sottoscrivi agli eventi WebSocket per aggiornamenti real-time dello stato online
+   */
+  private subscribeToWebSocketEvents(): void {
+    this.websocketSubscription = this.websocketService.userPresence$.subscribe((event) => {
+      if (event.type === 'user_online') {
+        // Aggiungi o aggiorna l'utente come online
+        const userSummary: UserSummaryDTO = {
+          id: event.userId,
+          username: event.username,
+          nomeCompleto: event.nomeCompleto,
+          profilePictureUrl: event.profilePictureUrl,
+          isOnline: true,
+        };
+        this.markUserOnline(userSummary);
+      } else if (event.type === 'user_offline') {
+        // Rimuovi l'utente dalla lista online
+        this.markUserOffline(event.userId);
+      }
+    });
   }
 
   // ============================================================================
@@ -93,6 +125,10 @@ export class OnlineUsersStore {
     if (this.pollingSubscription) {
       this.pollingSubscription.unsubscribe();
       this.pollingSubscription = null;
+    }
+    if (this.websocketSubscription) {
+      this.websocketSubscription.unsubscribe();
+      this.websocketSubscription = null;
     }
     // Pulisci anche i dati
     this._onlineUsers.set([]);
@@ -313,10 +349,8 @@ export class OnlineUsersStore {
 
     // Ordina ogni gruppo per nome
     grouped.forEach((users, key) => {
-      grouped.set(
-        key,
-        users.sort((a, b) => a.nomeCompleto.localeCompare(b.nomeCompleto))
-      );
+      const sortedUsers = users.toSorted((a, b) => a.nomeCompleto.localeCompare(b.nomeCompleto));
+      grouped.set(key, sortedUsers);
     });
 
     return grouped;

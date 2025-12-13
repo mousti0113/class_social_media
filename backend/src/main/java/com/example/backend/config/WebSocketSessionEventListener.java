@@ -7,6 +7,7 @@ import com.example.backend.repositories.UserSessionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -44,6 +46,7 @@ public class WebSocketSessionEventListener {
 
     private final UserSessionRepository userSessionRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     // Mappa sessionId -> username per tracciare utenti connessi (per performance)
     private final Map<String, String> activeUsers = new ConcurrentHashMap<>();
@@ -99,6 +102,10 @@ public class WebSocketSessionEventListener {
                     userSessionRepository.save(newSession);
                     log.info("Nuova UserSession creata per {} - SessionId: {}", username, sessionId);
                 }
+
+                // Broadcast evento user online a tutti i client connessi
+                broadcastUserOnlineStatus(username, true);
+
             } catch (Exception e) {
                 log.error("Errore aggiornamento UserSession per {}: {}", username, e.getMessage());
             }
@@ -139,6 +146,9 @@ public class WebSocketSessionEventListener {
                     userSession.setLastActivity(LocalDateTime.now());
                     userSessionRepository.save(userSession);
                     log.info("UserSession marcata offline per {} - SessionId: {}", username, sessionId);
+
+                    // Broadcast evento user offline a tutti i client connessi
+                    broadcastUserOnlineStatus(username, false);
                 } else {
                     log.warn("UserSession non trovata per sessionId: {}", sessionId);
                 }
@@ -216,5 +226,40 @@ public class WebSocketSessionEventListener {
      */
     public Set<String> getActiveUsernames() {
         return new HashSet<>(activeUsers.values());
+    }
+
+    /**
+     * Broadcast dell'evento di cambio stato online di un utente.
+     * Invia a tutti i client connessi tramite il topic /topic/user-presence
+     *
+     * @param username L'username dell'utente
+     * @param isOnline true se online, false se offline
+     */
+    private void broadcastUserOnlineStatus(String username, boolean isOnline) {
+        try {
+            // Cerca l'utente nel database per ottenere i dati completi
+            Optional<User> userOpt = userRepository.findByUsernameAndIsActiveTrue(username);
+
+            if (userOpt.isPresent()) {
+                User user = userOpt.get();
+
+                // Crea il payload dell'evento
+                Map<String, Object> presenceEvent = new HashMap<>();
+                presenceEvent.put("type", isOnline ? "user_online" : "user_offline");
+                presenceEvent.put("userId", user.getId());
+                presenceEvent.put("username", user.getUsername());
+                presenceEvent.put("nomeCompleto", user.getNomeCompleto());
+                presenceEvent.put("profilePictureUrl", user.getProfilePictureUrl());
+                presenceEvent.put("isOnline", isOnline);
+                presenceEvent.put("timestamp", System.currentTimeMillis());
+
+                // Broadcast a tutti i client
+                messagingTemplate.convertAndSend("/topic/user-presence", presenceEvent);
+
+                log.debug("Broadcast user {} status: {}", username, isOnline ? "online" : "offline");
+            }
+        } catch (Exception e) {
+            log.error("Errore durante broadcast presenza utente {}: {}", username, e.getMessage());
+        }
     }
 }

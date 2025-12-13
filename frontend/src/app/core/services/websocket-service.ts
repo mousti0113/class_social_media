@@ -31,6 +31,7 @@ export class WebsocketService {
   private readonly postLikedSubject = new Subject<PostLikeUpdate>();
   private readonly commentUpdatesSubject = new Subject<CommentUpdate>();
   private readonly commentsCountSubject = new Subject<CommentsCountUpdate>();
+  private readonly userPresenceSubject = new Subject<UserPresenceEvent>();
 
   // Observables pubblici per sottoscrizioni
   public notifications$ = this.notificationsSubject.asObservable();
@@ -44,6 +45,7 @@ export class WebsocketService {
   public postLiked$ = this.postLikedSubject.asObservable();
   public commentUpdates$ = this.commentUpdatesSubject.asObservable();
   public commentsCount$ = this.commentsCountSubject.asObservable();
+  public userPresence$ = this.userPresenceSubject.asObservable();
 
   // Mappa per tenere traccia delle sottoscrizioni ai commenti per post
   private commentSubscriptions = new Map<number, any>();
@@ -220,6 +222,12 @@ export class WebsocketService {
       const countUpdate = JSON.parse(message.body);
       this.commentsCountSubject.next(countUpdate);
     });
+
+    // Sottoscrizione agli eventi di presenza utenti (online/offline)
+    this.client.subscribe('/topic/user-presence', (message: IMessage) => {
+      const presenceEvent = JSON.parse(message.body);
+      this.userPresenceSubject.next(presenceEvent);
+    });
   }
 
   /**
@@ -389,4 +397,30 @@ export interface CommentsCountUpdate {
 
   /** Tipo dell'aggiornamento */
   type: 'comments_count_update';
+}
+
+/**
+ * Interfaccia per eventi di presenza utenti (online/offline)
+ */
+export interface UserPresenceEvent {
+  /** Tipo dell'evento */
+  type: 'user_online' | 'user_offline';
+
+  /** ID dell'utente */
+  userId: number;
+
+  /** Username dell'utente */
+  username: string;
+
+  /** Nome completo dell'utente */
+  nomeCompleto: string;
+
+  /** URL immagine profilo */
+  profilePictureUrl: string | null;
+
+  /** Stato online */
+  isOnline: boolean;
+
+  /** Timestamp dell'evento */
+  timestamp: number;
 }
