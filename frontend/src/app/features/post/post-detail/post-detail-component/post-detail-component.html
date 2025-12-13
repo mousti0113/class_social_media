@@ -200,7 +200,7 @@
               <button
                 type="button"
                 class="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                (click)="onCancelReply()"
+                (click)="focusCommentInput()"
               >
                 <lucide-icon [img]="MessageCircleIcon" [size]="22"></lucide-icon>
                 <span class="font-medium hidden xs:inline">Commenta</span>
@@ -224,6 +224,7 @@
           <!-- Form nuovo commento -->
           <div id="comment-form" class="p-4 border-b border-gray-200 dark:border-gray-700">
             <app-comment-form-component
+              #commentForm
               [postId]="postData.id"
               [replyTo]="replyingTo()"
               (created)="onCommentCreated($event)"

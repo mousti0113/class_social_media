@@ -2,7 +2,7 @@ import { Component, inject, OnInit, OnDestroy, signal, computed, ElementRef, vie
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { LucideAngularModule, ArrowLeft, Send, Image, Trash } from 'lucide-angular';
+import { LucideAngularModule, ArrowLeft, Send, Image, Trash, EyeOff, X, Eye } from 'lucide-angular';
 import { Subscription, interval, Subject } from 'rxjs';
 import { switchMap, startWith, takeUntil, finalize } from 'rxjs/operators';
 import { MessageService } from '../../../../core/api/message-service';
@@ -14,6 +14,10 @@ import { MessageResponseDTO, UserSummaryDTO } from '../../../../models';
 import { MessageBubbleComponent } from '../../../../shared/components/message-bubble/message-bubble-component/message-bubble-component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar-component/avatar-component';
 import { SkeletonComponent } from '../../../../shared/ui/skeleton/skeleton-component/skeleton-component';
+import { DropdownComponent } from '../../../../shared/ui/dropdown/dropdown-component/dropdown-component';
+import { CloudinaryStorageService } from '../../../../core/services/cloudinary-storage-service';
+import { ToastService } from '../../../../core/services/toast-service';
+import { TimeAgoComponent } from '../../../../shared/components/time-ago/time-ago-component/time-ago-component';
 
 /**
  * Chat view per una singola conversazione.
@@ -30,13 +34,16 @@ import { SkeletonComponent } from '../../../../shared/ui/skeleton/skeleton-compo
     MessageBubbleComponent,
     AvatarComponent,
     SkeletonComponent,
+    DropdownComponent,
+    TimeAgoComponent,
   ],
   templateUrl: './chat-component.html',
   styleUrl: './chat-component.scss',
 })
 export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   private readonly messagesContainer = viewChild<ElementRef<HTMLDivElement>>('messagesContainer');
-  
+  private readonly imageInputRef = viewChild<ElementRef<HTMLInputElement>>('imageInputRef');
+
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly messageService = inject(MessageService);
@@ -44,6 +51,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   private readonly websocketService = inject(WebsocketService);
   private readonly authStore = inject(AuthStore);
   private readonly onlineUsersStore = inject(OnlineUsersStore);
+  private readonly cloudinaryService = inject(CloudinaryStorageService);
+  private readonly toastService = inject(ToastService);
   
   private routeSub?: Subscription;
   private wsMessagesSub?: Subscription;
@@ -62,6 +71,9 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   readonly SendIcon = Send;
   readonly ImageIcon = Image;
   readonly TrashIcon = Trash;
+  readonly EyeOffIcon = EyeOff;
+  readonly XIcon = X;
+  readonly EyeIcon = Eye;
 
   // Stato
   readonly otherUser = signal<UserSummaryDTO | null>(null);
@@ -72,6 +84,12 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   readonly error = signal<string | null>(null);
   readonly messageText = signal('');
   readonly isOtherUserTyping = signal(false);
+
+  // Stato immagine
+  readonly imagePreviewUrl = signal<string | null>(null);
+  readonly pendingImageUrl = signal<string | null>(null);
+  readonly isUploadingImage = signal(false);
+  readonly imageViewerUrl = signal<string | null>(null);
 
   // ID utente corrente
   readonly currentUserId = computed(() => this.authStore.userId());
@@ -91,9 +109,11 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     return this.isOtherUserOnline() ? 'Online' : 'Offline';
   });
 
-  // Può inviare messaggio
+  // Può inviare messaggio (testo o immagine)
   readonly canSend = computed(() => {
-    return this.messageText().trim().length > 0 && !this.isSending();
+    const hasText = this.messageText().trim().length > 0;
+    const hasImage = this.pendingImageUrl() !== null;
+    return (hasText || hasImage) && !this.isSending() && !this.isUploadingImage();
   });
 
   ngOnInit(): void {
@@ -108,7 +128,6 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     // Sottoscrizione ai messaggi WebSocket real-time
     this.wsMessagesSub = this.websocketService.messages$.subscribe({
       next: (newMessage: MessageResponseDTO) => {
-        console.log('[Chat] Nuovo messaggio WebSocket ricevuto:', newMessage);
         
         // Verifica se il messaggio appartiene alla conversazione corrente
         const isRelevant = 
@@ -123,7 +142,6 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
           if (!exists) {
             this.messages.set([...currentMessages, newMessage]);
             this.shouldScrollToBottom = true;
-            console.log('[Chat] Messaggio aggiunto alla conversazione');
           }
         }
       },
@@ -288,9 +306,10 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   sendMessage(): void {
     const content = this.messageText().trim();
+    const imageUrl = this.pendingImageUrl();
     const user = this.otherUser();
-    
-    if (!content || !user || this.isSending()) return;
+
+    if ((!content && !imageUrl) || !user || this.isSending()) return;
 
     this.isSending.set(true);
     const targetUserId = user.id;
@@ -300,13 +319,15 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     this.messageService.sendMessage({
       destinatarioId: targetUserId,
-      contenuto: content,
+      contenuto: content || undefined,
+      imageUrl: imageUrl || undefined,
     }).subscribe({
       next: (newMessage) => {
         // Verifica che sia ancora la stessa conversazione
         if (this.currentOtherUserId === targetUserId) {
           this.messages.update(msgs => [...msgs, newMessage]);
           this.messageText.set('');
+          this.clearImagePreview();
           this.shouldScrollToBottom = true;
         }
         this.isSending.set(false);
@@ -342,9 +363,9 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   /**
-   * Elimina un messaggio.
+   * Elimina o nasconde un messaggio.
    * - Se è un mio messaggio: soft delete (tutti vedono "Messaggio cancellato")
-   * - Se è un messaggio altrui: nascondimento (solo io non lo vedo più)
+   * - Se è un messaggio altrui: nascondimento (solo io vedo "Hai nascosto questo messaggio")
    */
   deleteMessage(messageId: number): void {
     if (this.deletingIds().has(messageId)) return;
@@ -369,15 +390,15 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
                 if (m.mittente.id === currUserId) {
                   return { ...m, isDeletedBySender: true };
                 }
-                // Se sono il destinatario -> il backend lo ha nascosto, lo rimuovo dalla lista
-                return null;
+                // Se sono il destinatario -> il backend lo ha nascosto, aggiorna flag
+                return { ...m, isHiddenByCurrentUser: true };
               }
               return m;
-            }).filter((m): m is MessageResponseDTO => m !== null)
+            })
           );
         },
         error: (err) => {
-          console.error('Errore eliminazione messaggio:', err);
+          console.error('Errore eliminazione/nascondimento messaggio:', err);
         },
       });
   }
@@ -389,7 +410,81 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     return message.isDeletedBySender;
   }
 
+  /**
+   * Verifica se il messaggio è nascosto dall'utente corrente
+   */
+  isMessageHidden(message: MessageResponseDTO): boolean {
+    return message.isHiddenByCurrentUser;
+  }
+
   isDeleting(messageId: number): boolean {
     return this.deletingIds().has(messageId);
+  }
+
+  /**
+   * Apre il file picker per selezionare un'immagine
+   */
+  openImagePicker(): void {
+    this.imageInputRef()?.nativeElement.click();
+  }
+
+  /**
+   * Gestisce la selezione di un'immagine
+   */
+  onImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+
+    if (!file) return;
+
+    // Reset input per permettere la selezione dello stesso file
+    input.value = '';
+
+    // Crea preview locale immediata
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      this.imagePreviewUrl.set(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload su Cloudinary
+    this.isUploadingImage.set(true);
+    this.cloudinaryService.uploadImage(file, 'message').subscribe({
+      next: (response) => {
+        this.pendingImageUrl.set(response.secureUrl);
+        this.isUploadingImage.set(false);
+      },
+      error: (err) => {
+        console.error('Errore upload immagine:', err);
+        this.toastService.error(err.message || "Errore durante l'upload dell'immagine");
+        this.clearImagePreview();
+        this.isUploadingImage.set(false);
+      },
+    });
+  }
+
+  /**
+   * Rimuove l'immagine in preview.
+   * Non eliminiamo da Cloudinary qui perché l'immagine non è ancora associata
+   * a nessuna entità e il backend non può verificare la proprietà.
+   * Le immagini orfane verranno gestite da un job di pulizia periodico.
+   */
+  clearImagePreview(): void {
+    this.imagePreviewUrl.set(null);
+    this.pendingImageUrl.set(null);
+  }
+
+  /**
+   * Apre il visualizzatore immagini a schermo intero
+   */
+  openImageViewer(imageUrl: string): void {
+    this.imageViewerUrl.set(imageUrl);
+  }
+
+  /**
+   * Chiude il visualizzatore immagini
+   */
+  closeImageViewer(): void {
+    this.imageViewerUrl.set(null);
   }
 }

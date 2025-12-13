@@ -18,5 +18,6 @@ public class MessageResponseDTO {
     private String imageUrl;
     private Boolean isRead;
     private Boolean isDeletedBySender;
+    private Boolean isHiddenByCurrentUser;
     private LocalDateTime createdAt;
 }

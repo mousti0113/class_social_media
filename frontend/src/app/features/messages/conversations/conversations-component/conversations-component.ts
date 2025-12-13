@@ -8,6 +8,7 @@ import { switchMap, startWith, debounceTime, distinctUntilChanged, filter } from
 import { MessageService } from '../../../../core/api/message-service';
 import { OnlineUsersStore } from '../../../../core/stores/online-users-store';
 import { TypingStore } from '../../../../core/stores/typing-store';
+import { AuthStore } from '../../../../core/stores/auth-store';
 import { ConversationResponseDTO, MessageResponseDTO } from '../../../../models';
 import { ConversationItemComponent } from '../../../../shared/components/conversation-item/conversation-item-component/conversation-item-component';
 import { SkeletonComponent } from '../../../../shared/ui/skeleton/skeleton-component/skeleton-component';
@@ -42,6 +43,7 @@ export class ConversationsComponent implements OnInit, OnDestroy {
   private readonly messageService = inject(MessageService);
   private readonly onlineUsersStore = inject(OnlineUsersStore);
   private readonly typingStore = inject(TypingStore);
+  private readonly authStore = inject(AuthStore);
   private readonly router = inject(Router);
   private readonly subscriptions: Subscription[] = [];
   private readonly searchSubject = new Subject<string>();
@@ -243,5 +245,32 @@ export class ConversationsComponent implements OnInit, OnDestroy {
 
   private escapeRegex(string: string): string {
     return string.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /**
+   * Ottiene il messaggio di anteprima per una conversazione.
+   * Gestisce i casi di messaggio eliminato o nascosto.
+   */
+  getLastMessagePreview(conversation: ConversationResponseDTO): string {
+    const lastMsg = conversation.ultimoMessaggio;
+    const currentUserId = this.authStore.userId();
+
+    if (lastMsg.isDeletedBySender) {
+      // Se sono io il mittente, mostro "Hai cancellato", altrimenti "Messaggio cancellato"
+      return lastMsg.mittente.id === currentUserId
+        ? 'Hai cancellato questo messaggio'
+        : 'Messaggio cancellato';
+    }
+
+    if (lastMsg.isHiddenByCurrentUser) {
+      return 'Hai nascosto questo messaggio';
+    }
+
+    // Se c'è solo un'immagine senza testo
+    if (!lastMsg.contenuto && lastMsg.imageUrl) {
+      return '📷 Immagine';
+    }
+
+    return lastMsg.contenuto || '';
   }
 }

@@ -96,7 +96,6 @@ export class PostActionsComponent implements OnInit, OnDestroy {
       // Se il parent ha un valore diverso dal nostro stato locale (e non stiamo caricando),
       // significa che è arrivato un update esterno (WebSocket) - aggiorniamo solo il conteggio
       if (localCount !== null && !this.isLikeLoading() && parentLikesCount !== localCount) {
-        console.log('[PostActions] Sincronizzazione conteggio con update esterno:', parentLikesCount);
         // Aggiorna solo il conteggio, NON lo stato hasLiked (quello dell'utente resta invariato)
         this.localLikesCount.set(parentLikesCount);
       }

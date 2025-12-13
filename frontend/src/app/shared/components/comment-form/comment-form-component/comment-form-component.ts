@@ -289,4 +289,16 @@ private readonly commentService = inject(CommentService);
     this.mentionSearchTerm.set('');
     this.mentionStartIndex.set(-1);
   }
+
+  /**
+   * Focus sulla textarea (chiamabile dall'esterno)
+   */
+  focus(): void {
+    setTimeout(() => {
+      const textarea = this.textareaRef()?.nativeElement;
+      if (textarea) {
+        textarea.focus();
+      }
+    }, 100);
+  }
 }

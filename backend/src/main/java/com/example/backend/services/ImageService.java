@@ -185,4 +185,40 @@ public class ImageService {
             log.debug("Riferimento immagine rimosso dal profilo utente ID: {}", user.getId());
         }
     }
+
+    /**
+     * Elimina un'immagine di un messaggio da Cloudinary.
+     * Questa funzione è più permissiva: elimina l'immagine senza verificare la proprietà
+     * perché la verifica è già stata fatta dal chiamante (DirectMessageService).
+     *
+     * @param imageUrl URL completo dell'immagine Cloudinary
+     */
+    public void deleteMessageImage(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return;
+        }
+
+        log.info("Eliminazione immagine messaggio - URL: {}", imageUrl);
+
+        // Estrai publicId dall'URL
+        String publicId = extractPublicIdFromUrl(imageUrl);
+        log.debug("Public ID estratto: {}", publicId);
+
+        // Elimina da Cloudinary
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+            String resultStatus = (String) result.get("result");
+
+            if (!"ok".equals(resultStatus) && !"not found".equals(resultStatus)) {
+                log.error("Errore eliminazione Cloudinary - Result: {}", result);
+                // Non lanciare eccezione, log solo l'errore
+            } else {
+                log.info("Immagine messaggio eliminata da Cloudinary - Public ID: {}, Result: {}", publicId, resultStatus);
+            }
+        } catch (Exception e) {
+            log.error("Eccezione durante eliminazione immagine messaggio da Cloudinary", e);
+            // Non lanciare eccezione, il messaggio può comunque essere eliminato
+        }
+    }
 }

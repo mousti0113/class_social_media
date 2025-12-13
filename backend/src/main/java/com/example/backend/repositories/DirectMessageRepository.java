@@ -15,7 +15,7 @@ import java.util.List;
 @Repository
 public interface DirectMessageRepository extends JpaRepository<DirectMessage, Long> {
 
-    // Conversazione tra due utenti (esclude messaggi nascosti)
+    // Conversazione tra due utenti (include messaggi nascosti, saranno marcati nel DTO)
     @Query("""
         SELECT dm FROM DirectMessage dm
         WHERE dm.isDeletedPermanently = false
@@ -23,11 +23,6 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, Lo
             (dm.sender.id = :user1Id AND dm.receiver.id = :user2Id)
             OR
             (dm.sender.id = :user2Id AND dm.receiver.id = :user1Id)
-        )
-        AND NOT EXISTS (
-            SELECT 1 FROM HiddenMessage hm
-            WHERE hm.message.id = dm.id
-            AND hm.user.id = :user1Id
         )
         ORDER BY dm.createdAt ASC
         """)
@@ -127,7 +122,7 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, Lo
 
     /**
      * Cerca messaggi per contenuto (case-insensitive).
-     * Cerca solo nei messaggi visibili per l'utente.
+     * Cerca solo nei messaggi visibili per l'utente (esclude nascosti).
      */
     @Query("""
         SELECT dm FROM DirectMessage dm
@@ -138,6 +133,11 @@ public interface DirectMessageRepository extends JpaRepository<DirectMessage, Lo
             OR (dm.receiver.id = :userId AND dm.isDeletedByReceiver = false)
         )
         AND LOWER(dm.content) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+        AND NOT EXISTS (
+            SELECT 1 FROM HiddenMessage hm
+            WHERE hm.message.id = dm.id
+            AND hm.user.id = :userId
+        )
         ORDER BY dm.createdAt DESC
         """)
     List<DirectMessage> searchMessagesByContent(@Param("userId") Long userId,

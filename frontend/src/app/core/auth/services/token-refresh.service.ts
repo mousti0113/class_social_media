@@ -60,12 +60,9 @@ export class TokenRefreshService {
 
     // Se il token scade tra meno di 10 secondi, rinfresca immediatamente
     if (refreshInSeconds <= 10) {
-      console.log('Token in scadenza, refresh immediato');
       this.performRefresh();
       return;
     }
-
-    console.log(`Token refresh pianificato tra ${Math.floor(refreshInSeconds / 60)} minuti (${refreshInSeconds}s)`);
 
     // Imposta il timer per il refresh
     this.refreshTimerId = setTimeout(() => {
@@ -77,11 +74,8 @@ export class TokenRefreshService {
    * Esegue il refresh del token e ripianifica il prossimo
    */
   private performRefresh(): void {
-    console.log('Esecuzione refresh token automatico');
-
     this.authService.refreshToken().subscribe({
       next: () => {
-        console.log('✅ Token refreshato con successo');
         // Ripianifica il prossimo refresh con il nuovo token
         this.scheduleTokenRefresh();
       },
@@ -99,7 +93,6 @@ export class TokenRefreshService {
     if (this.refreshTimerId) {
       clearTimeout(this.refreshTimerId);
       this.refreshTimerId = null;
-      console.log('Token refresh automatico fermato');
     }
   }
 }

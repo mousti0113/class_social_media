@@ -6,8 +6,9 @@ import { catchError, from, Observable, switchMap, throwError } from 'rxjs';
  * Tipo di immagine da caricare (determina la cartella su Cloudinary)
  * - profile: Immagini profilo utente
  * - post: Immagini allegate ai post
+ * - message: Immagini nei messaggi privati
  */
-export type ImageType = 'profile' | 'post';
+export type ImageType = 'profile' | 'post' | 'message';
 
 /**
  * Risposta di upload da Cloudinary

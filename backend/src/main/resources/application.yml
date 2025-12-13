@@ -12,7 +12,6 @@ spring:
 
   jpa:
     hibernate:
-      
       ddl-auto: ${DDL_AUTO:create-drop}
     properties:
       hibernate:
@@ -21,7 +20,7 @@ spring:
     show-sql: ${SHOW_SQL:false}
   security:
     user:
-      name:  ${SPRING_SECURITY_USER_NAME:admin}
+      name: ${SPRING_SECURITY_USER_NAME:admin}
       password: ${SPRING_SECURITY_USER_PASSWORD:admin}
   mail:
     host: ${MAIL_HOST}
@@ -29,19 +28,18 @@ spring:
     username: ${MAIL_USERNAME}
     password: ${MAIL_PASSWORD}
     properties:
-        mail:
-          smtp:
-            auth: true
-            starttls:
-              enable: true
-              required: true
-            ssl:
-              trust: "*"
-            connectiontimeout: 5000
-            timeout: 5000
-            writetimeout: 5000
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            trust: "*"
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 jwt:
-
   # L'applicazione NON si avvierà se questo valore rimane "default-secret"
   secret: ${JWT_SECRET:default-secret}
   # Access token validity: 30 minuti (1800000ms)
@@ -58,7 +56,9 @@ cors:
 app:
   # Configurazione applicazione
   max-students: ${MAX_STUDENTS:17}
-  
+  frontend:
+    url: ${APP_FRONTEND_URL:http://localhost:4200}
+
 logging:
   level:
     root: ${LOG_LEVEL:INFO}
@@ -71,6 +71,3 @@ cloudinary:
   api-secret: ${CLOUDINARY_API_SECRET}
 server:
   port: 8080
-
-        
-

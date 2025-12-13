@@ -58,7 +58,6 @@ export class WebsocketService {
    */
   connect(): void {
     if (this.client?.connected) {
-      console.log('[WebSocket] Già connesso');
       return;
     }
 
@@ -67,8 +66,6 @@ export class WebsocketService {
       console.error('[WebSocket] Token non disponibile, impossibile connettersi');
       return;
     }
-
-    console.log('[WebSocket] Connessione in corso...');
 
     this.client = new Client({
       // Usa SockJS come trasporto (fallback per browser senza WebSocket nativo)
@@ -81,9 +78,7 @@ export class WebsocketService {
 
       // Debug (disabilita in produzione)
       debug: (str) => {
-        if (!environment.production) {
-          console.log('[WebSocket Debug]', str);
-        }
+        // Debug logging disabled in production
       },
 
       // Heartbeat per mantenere la connessione attiva
@@ -110,7 +105,6 @@ export class WebsocketService {
 
       // Callback cambio stato WebSocket
       onWebSocketClose: () => {
-        console.log('[WebSocket] Connessione WebSocket chiusa');
         this.connected.set(false);
       },
     });
@@ -124,7 +118,6 @@ export class WebsocketService {
    */
   disconnect(): void {
     if (this.client) {
-      console.log('[WebSocket] Disconnessione...');
       this.client.deactivate();
       this.client = null;
       this.connected.set(false);
@@ -135,7 +128,6 @@ export class WebsocketService {
    * Callback chiamato quando la connessione è stabilita
    */
   private onConnected(): void {
-    console.log('[WebSocket] Connesso con successo');
     this.connected.set(true);
     this.reconnectAttempts = 0;
 
@@ -147,17 +139,11 @@ export class WebsocketService {
    * Callback chiamato quando si verifica un errore
    */
   private onError(frame: any): void {
-    console.error('[WebSocket] Errore STOMP:', frame);
     this.connected.set(false);
 
     // Tentativo di riconnessione
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      console.log(
-        `[WebSocket] Tentativo di riconnessione ${this.reconnectAttempts}/${this.maxReconnectAttempts}...`
-      );
-    } else {
-      console.error('[WebSocket] Numero massimo di tentativi di riconnessione raggiunto');
     }
   }
 
@@ -165,7 +151,6 @@ export class WebsocketService {
    * Callback chiamato quando la connessione viene chiusa
    */
   private onDisconnected(): void {
-    console.log('[WebSocket] Disconnesso');
     this.connected.set(false);
   }
 
@@ -178,21 +163,18 @@ export class WebsocketService {
     // Sottoscrizione alle notifiche personali
     this.client.subscribe('/user/queue/notifications', (message: IMessage) => {
       const notification = JSON.parse(message.body);
-      console.log('[WebSocket] Notifica ricevuta:', notification);
       this.notificationsSubject.next(notification);
     });
 
     // Sottoscrizione ai messaggi diretti
     this.client.subscribe('/user/queue/messages', (message: IMessage) => {
       const msg = JSON.parse(message.body);
-      console.log('[WebSocket] Messaggio ricevuto:', msg);
       this.messagesSubject.next(msg);
     });
 
     // Sottoscrizione agli indicatori di digitazione
     this.client.subscribe('/user/queue/typing', (message: IMessage) => {
       const typing = JSON.parse(message.body);
-      console.log('[WebSocket] Typing indicator:', typing);
       this.typingSubject.next(typing);
     });
 
@@ -206,46 +188,38 @@ export class WebsocketService {
     // Sottoscrizione agli annunci broadcast
     this.client.subscribe('/topic/announcements', (message: IMessage) => {
       const announcement = JSON.parse(message.body);
-      console.log('[WebSocket] Annuncio broadcast:', announcement);
       this.announcementsSubject.next(announcement);
     });
 
     // Sottoscrizione ai nuovi post (broadcast a tutti gli utenti)
     this.client.subscribe('/topic/posts', (message: IMessage) => {
       const post = JSON.parse(message.body);
-      console.log('[WebSocket] Nuovo post ricevuto:', post);
       this.newPostsSubject.next(post);
     });
 
     // Sottoscrizione ai post aggiornati
     this.client.subscribe('/topic/posts/updated', (message: IMessage) => {
       const post = JSON.parse(message.body);
-      console.log('[WebSocket] Post aggiornato ricevuto:', post);
       this.postUpdatedSubject.next(post);
     });
 
     // Sottoscrizione ai post cancellati
     this.client.subscribe('/topic/posts/deleted', (message: IMessage) => {
       const data = JSON.parse(message.body);
-      console.log('[WebSocket] Post cancellato:', data);
       this.postDeletedSubject.next(data);
     });
 
     // Sottoscrizione agli aggiornamenti like
     this.client.subscribe('/topic/posts/liked', (message: IMessage) => {
       const likeUpdate = JSON.parse(message.body);
-      console.log('[WebSocket] Like update ricevuto:', likeUpdate);
       this.postLikedSubject.next(likeUpdate);
     });
 
     // Sottoscrizione agli aggiornamenti conteggio commenti (globale)
     this.client.subscribe('/topic/posts/comments-count', (message: IMessage) => {
       const countUpdate = JSON.parse(message.body);
-      console.log('[WebSocket] Comments count update ricevuto:', countUpdate);
       this.commentsCountSubject.next(countUpdate);
     });
-
-    console.log('[WebSocket] Sottoscrizioni attive');
   }
 
   /**
@@ -266,8 +240,6 @@ export class WebsocketService {
       destination: '/app/test',
       body: JSON.stringify({ content, type }),
     });
-
-    console.log('[WebSocket] Messaggio test inviato');
   }
 
   /**
@@ -293,8 +265,6 @@ export class WebsocketService {
         isTyping,
       }),
     });
-
-    console.log(`[WebSocket] Typing indicator inviato a ${recipientUsername}: ${isTyping}`);
   }
 
   /**
@@ -310,7 +280,6 @@ export class WebsocketService {
 
     // Evita sottoscrizioni duplicate
     if (this.commentSubscriptions.has(postId)) {
-      console.log(`[WebSocket] Già sottoscritto ai commenti del post ${postId}`);
       return;
     }
 
@@ -318,13 +287,11 @@ export class WebsocketService {
       `/topic/posts/${postId}/comments`,
       (message: IMessage) => {
         const update = JSON.parse(message.body);
-        console.log(`[WebSocket] Aggiornamento commento per post ${postId}:`, update);
         this.commentUpdatesSubject.next(update);
       }
     );
 
     this.commentSubscriptions.set(postId, subscription);
-    console.log(`[WebSocket] Sottoscritto ai commenti del post ${postId}`);
   }
 
   /**
@@ -337,7 +304,6 @@ export class WebsocketService {
     if (subscription) {
       subscription.unsubscribe();
       this.commentSubscriptions.delete(postId);
-      console.log(`[WebSocket] Disiscritto dai commenti del post ${postId}`);
     }
   }
 

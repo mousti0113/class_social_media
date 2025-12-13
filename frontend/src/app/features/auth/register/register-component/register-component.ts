@@ -225,12 +225,9 @@ export class RegisterComponent {
       .subscribe({
         next: () => {
           this.isLoading.set(false);
-          this.toastService.success(
-            'Account creato! Controlla la tua email per verificare il tuo account.'
-          );
-          // Naviga al login con messaggio di verifica
-          this.router.navigate(['/auth/login'], {
-            state: { emailVerificationPending: true, email }
+          // Naviga alla pagina di verifica email
+          this.router.navigate(['/auth/verify-email'], {
+            queryParams: { email }
           });
         },
         error: (error) => {

@@ -219,7 +219,6 @@ export class SettingsComponent implements OnInit, OnDestroy {
     // Upload su Cloudinary
     this.cloudinaryService.uploadImage(file, 'profile', (progress) => {
       // Opzionale: mostra barra di progresso
-      console.log(`Upload: ${progress}%`);
     })
       .pipe(
         takeUntil(this.destroy$),

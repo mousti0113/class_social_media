@@ -35,6 +35,7 @@ public class DirectMessageService {
     private final NotificationService notificationService;
     private final HiddenMessageRepository hiddenMessageRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final ImageService imageService;
 
     private static final String ENTITY_MESSAGE = "Messaggio";
     private static final String ENTITY_USER = "Utente";
@@ -52,6 +53,11 @@ public class DirectMessageService {
             throw new InvalidInputException("Non puoi inviare messaggi a te stesso");
         }
 
+        // Verifica che almeno uno tra contenuto e imageUrl sia presente
+        if (!request.isValid()) {
+            throw new InvalidInputException("Il messaggio deve contenere almeno un testo o un'immagine");
+        }
+
         // Carica mittente e destinatario
         User sender = userRepository.findById(senderId)
                 .orElseThrow(() -> new ResourceNotFoundException(ENTITY_USER, FIELD_ID, senderId));
@@ -64,7 +70,8 @@ public class DirectMessageService {
         DirectMessage message = DirectMessage.builder()
                 .sender(sender)
                 .receiver(receiver)
-                .content(request.getContenuto())
+                .content(request.getContenuto() != null ? request.getContenuto() : "")
+                .imageUrl(request.getImageUrl())
                 .isRead(false)
                 .isDeletedBySender(false)
                 .isDeletedByReceiver(false)
@@ -72,7 +79,7 @@ public class DirectMessageService {
                 .build();
 
         message = messageRepository.save(message);
-        log.info("Messaggio inviato - ID: {}", message.getId());
+        log.info("Messaggio inviato - ID: {}, hasImage: {}", message.getId(), request.getImageUrl() != null);
 
         MessageResponseDTO response = messageMapper.toMessaggioResponseDTO(message);
 
@@ -115,8 +122,12 @@ public class DirectMessageService {
 
         log.debug("Trovati {} messaggi nella conversazione", messages.size());
 
+        // Mappa i messaggi verificando se sono nascosti per l'utente corrente
         return messages.stream()
-                .map(messageMapper::toMessaggioResponseDTO)
+                .map(message -> {
+                    boolean isHidden = hiddenMessageRepository.existsByMessageIdAndUserId(message.getId(), userId);
+                    return messageMapper.toMessaggioResponseDTO(message, isHidden);
+                })
                 .toList();
     }
 
@@ -141,8 +152,12 @@ public class DirectMessageService {
             int unreadCount = (int) messageRepository.countUnreadMessagesBySender(
                     userId, altroUtente.getId());
 
+            // Verifica se l'ultimo messaggio è nascosto per l'utente corrente
+            boolean isLastMessageHidden = hiddenMessageRepository
+                    .existsByMessageIdAndUserId(lastMessage.getId(), userId);
+
             return messageMapper.toConversazioneResponseDTO(
-                    altroUtente, lastMessage, unreadCount);
+                    altroUtente, lastMessage, unreadCount, isLastMessageHidden);
         });
     }
 
@@ -197,6 +212,11 @@ public class DirectMessageService {
 
         // Se è il mittente -> SOFT DELETE (tutti vedranno "Messaggio cancellato")
         if (message.getSender().getId().equals(userId)) {
+            // Se c'è un'immagine, eliminala da Cloudinary
+            if (message.getImageUrl() != null && !message.getImageUrl().isBlank()) {
+                imageService.deleteMessageImage(message.getImageUrl());
+                message.setImageUrl(null);
+            }
             message.setDeletedBySender(true);
             messageRepository.save(message);
             log.info("Messaggio {} eliminato (soft delete) dal mittente", messageId);

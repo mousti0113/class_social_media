@@ -36,7 +36,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
     private final WebSocketRateLimitInterceptor webSocketRateLimitInterceptor;
-    
+
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
 
@@ -44,10 +44,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
      * Configura il message broker.
      * <p>
      * - enableSimpleBroker: Abilita un broker in-memory semplice
-     *   con prefissi /topic (broadcast) e /user (messaggi diretti)
+     * con prefissi /topic (broadcast) e /user (messaggi diretti)
      * - setApplicationDestinationPrefixes: Imposta il prefisso per i messaggi
-     *   inviati dai client al server
-     * - setUserDestinationPrefix: Imposta il prefisso per destinazioni utente-specifiche
+     * inviati dai client al server
+     * - setUserDestinationPrefix: Imposta il prefisso per destinazioni
+     * utente-specifiche
      *
      * @param config il registry del message broker
      */
@@ -69,27 +70,20 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
      * Registra gli endpoint STOMP per la connessione WebSocket.
      * <p>
      * - addEndpoint("/ws"): L'endpoint a cui i client si connettono
-     * - setAllowedOrigins("http://localhost:4200"): Abilita CORS per il frontend Angular
-     * - withSockJS(): Abilita il fallback SockJS per browser che non supportano WebSocket
+     * - setAllowedOrigins("http://localhost:4200"): Abilita CORS per il frontend
+     * Angular
+     * - withSockJS(): Abilita il fallback SockJS per browser che non supportano
+     * WebSocket
      *
      * @param registry il registry degli endpoint STOMP
      */
     @Override
     public void registerStompEndpoints(@NonNull StompEndpointRegistry registry) {
-        // Log per debug - RIMUOVERE IN PRODUZIONE
-        System.out.println("=== WebSocket CORS Configuration ===");
-        System.out.println("Raw allowedOrigins: " + allowedOrigins);
 
         // Trim degli spazi bianchi da ogni origin e converti in array
         String[] origins = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
                 .toArray(String[]::new);
-
-        System.out.println("Parsed origins count: " + origins.length);
-        for (String origin : origins) {
-            System.out.println("  - '" + origin + "'");
-        }
-        System.out.println("===================================");
 
         // Registra l'endpoint /ws per connessioni WebSocket
         registry.addEndpoint("/ws")
@@ -115,7 +109,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void configureClientInboundChannel(@NonNull ChannelRegistration registration) {
         registration.interceptors(
                 webSocketAuthInterceptor,
-                webSocketRateLimitInterceptor
-        );
+                webSocketRateLimitInterceptor);
     }
 }

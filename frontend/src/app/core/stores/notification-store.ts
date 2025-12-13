@@ -257,8 +257,6 @@ export class NotificationStore {
       this._notifications.update(notifications =>
         notifications.filter(n => !n.isRead)
       );
-
-      console.log(`Eliminate ${response?.deletedCount} notifiche lette`);
     } catch (error) {
       console.error('Errore eliminazione notifiche lette:', error);
       throw error;
@@ -275,8 +273,6 @@ export class NotificationStore {
    * @param notification notifica ricevuta in real-time
    */
   private handleNewNotification(notification: NotificationResponseDTO): void {
-    console.log('[NotificationStore] Nuova notifica ricevuta:', notification);
-
     // Aggiunge la notifica all'inizio della lista (più recente)
     this._notifications.update(current => [notification, ...current]);
 

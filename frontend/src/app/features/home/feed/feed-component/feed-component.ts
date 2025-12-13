@@ -93,7 +93,6 @@ export class FeedComponent implements OnInit, OnDestroy {
         const alreadyExists = this.posts().some(p => p.id === post.id);
 
         if (!isOwnPost && !alreadyExists) {
-          console.log('[Feed] Nuovo post ricevuto via WebSocket:', post.id);
           this.posts.update(posts => [post, ...posts]);
         }
       },
@@ -110,7 +109,6 @@ export class FeedComponent implements OnInit, OnDestroy {
   private subscribeToPostUpdates(): void {
     this.postUpdatedSubscription = this.websocketService.postUpdated$.subscribe({
       next: (updatedPost: PostResponseDTO) => {
-        console.log('[Feed] Post aggiornato via WebSocket:', updatedPost.id);
         this.posts.update(posts =>
           posts.map(p => p.id === updatedPost.id ? { ...p, ...updatedPost } : p)
         );
@@ -128,7 +126,6 @@ export class FeedComponent implements OnInit, OnDestroy {
   private subscribeToPostDeletes(): void {
     this.postDeletedSubscription = this.websocketService.postDeleted$.subscribe({
       next: (data: { postId: number }) => {
-        console.log('[Feed] Post cancellato via WebSocket:', data.postId);
         this.posts.update(posts => posts.filter(p => p.id !== data.postId));
       },
       error: (err) => {
@@ -144,7 +141,6 @@ export class FeedComponent implements OnInit, OnDestroy {
   private subscribeToPostLikes(): void {
     this.postLikedSubscription = this.websocketService.postLiked$.subscribe({
       next: (likeUpdate: PostLikeUpdate) => {
-        console.log('[Feed] Like update via WebSocket:', likeUpdate.postId, 'likes:', likeUpdate.likesCount);
         this.posts.update(posts =>
           posts.map(p => {
             if (p.id === likeUpdate.postId) {
@@ -167,7 +163,6 @@ export class FeedComponent implements OnInit, OnDestroy {
   private subscribeToCommentsCount(): void {
     this.commentsCountSubscription = this.websocketService.commentsCount$.subscribe({
       next: (countUpdate: CommentsCountUpdate) => {
-        console.log('[Feed] Comments count update via WebSocket:', countUpdate.postId, 'comments:', countUpdate.commentsCount);
         this.posts.update(posts =>
           posts.map(p => {
             if (p.id === countUpdate.postId) {

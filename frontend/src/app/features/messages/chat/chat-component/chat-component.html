@@ -80,32 +80,110 @@
         <!-- Messaggio eliminato dal mittente -->
         @if (isMessageDeleted(message)) {
           <div [class]="message.mittente.id === currentUserId() ? 'flex justify-end' : 'flex justify-start'">
-            <div class="px-4 py-3 rounded-2xl bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 italic text-sm max-w-xs">
-              Messaggio cancellato
+            <div class="px-4 py-3 rounded-2xl bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 italic text-sm max-w-xs sm:max-w-sm">
+              {{ message.mittente.id === currentUserId() ? 'Hai cancellato questo messaggio' : 'Messaggio cancellato' }}
+            </div>
+          </div>
+        } @else if (isMessageHidden(message)) {
+          <!-- Messaggio nascosto dall'utente corrente -->
+          <div class="flex justify-start">
+            <div class="px-4 py-3 rounded-2xl bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 italic text-sm max-w-xs sm:max-w-sm">
+              Hai nascosto questo messaggio
             </div>
           </div>
         } @else {
-          <!-- Messaggio normale -->
-          <div class="relative group">
-            <app-message-bubble-component
-              [contenuto]="message.contenuto"
-              [imageUrl]="message.imageUrl"
-              [createdAt]="message.createdAt"
-              [isRead]="message.isRead"
-              [isMine]="message.mittente.id === currentUserId()"
-            />
+          <!-- Messaggio normale - cliccabile per aprire dropdown -->
+          <div class="flex w-full" [class.justify-end]="message.mittente.id === currentUserId()" [class.justify-start]="message.mittente.id !== currentUserId()">
+            <div class="flex flex-col" [class.items-end]="message.mittente.id === currentUserId()" [class.items-start]="message.mittente.id !== currentUserId()">
+              <app-dropdown
+                [placement]="message.mittente.id === currentUserId() ? 'bottom-end' : 'bottom-start'"
+                [minWidth]="8"
+              >
+                <!-- Il messaggio stesso è il trigger del dropdown -->
+                <div
+                  trigger
+                  class="max-w-xs sm:max-w-sm md:max-w-md cursor-pointer active:opacity-80 transition-opacity"
+                >
+                  <div
+                    class="px-4 py-2 rounded-2xl"
+                    [class.bg-primary-500]="message.mittente.id === currentUserId()"
+                    [class.text-white]="message.mittente.id === currentUserId()"
+                    [class.rounded-br-sm]="message.mittente.id === currentUserId()"
+                    [class.bg-gray-200]="message.mittente.id !== currentUserId()"
+                    [class.dark:bg-gray-700]="message.mittente.id !== currentUserId()"
+                    [class.text-text-light]="message.mittente.id !== currentUserId()"
+                    [class.dark:text-text-dark]="message.mittente.id !== currentUserId()"
+                    [class.rounded-bl-sm]="message.mittente.id !== currentUserId()"
+                  >
+                    <!-- Immagine allegata -->
+                    @if (message.imageUrl) {
+                      <div class="mb-2 -mx-2 -mt-1">
+                        <img
+                          [src]="message.imageUrl"
+                          alt="Immagine allegata"
+                          class="rounded-xl max-w-full h-auto"
+                          loading="lazy"
+                        />
+                      </div>
+                    }
 
-            <!-- Pulsante elimina -->
-            <button
-              type="button"
-              (click)="deleteMessage(message.id)"
-              [disabled]="isDeleting(message.id)"
-              class="absolute -top-2 text-gray-400 hover:text-red-500 disabled:opacity-50 opacity-0 group-hover:opacity-100 focus:opacity-100 transition"
-              [ngClass]="message.mittente.id === currentUserId() ? 'right-0' : 'left-0'"
-              aria-label="Elimina messaggio"
-            >
-              <lucide-icon [img]="TrashIcon" [size]="18" />
-            </button>
+                    <!-- Contenuto testuale -->
+                    @if (message.contenuto) {
+                      <p class="text-sm whitespace-pre-wrap break-words">{{ message.contenuto }}</p>
+                    }
+                  </div>
+                </div>
+
+                <!-- Menu dropdown -->
+                <div menu class="py-1 min-w-[120px]">
+                  @if (message.imageUrl) {
+                    <!-- Visualizza immagine -->
+                    <button
+                      type="button"
+                      (click)="openImageViewer(message.imageUrl!)"
+                      class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <lucide-icon [img]="EyeIcon" [size]="16" />
+                      <span>Visualizza</span>
+                    </button>
+                  }
+                  @if (message.mittente.id === currentUserId()) {
+                    <!-- Elimina (messaggio proprio) -->
+                    <button
+                      type="button"
+                      (click)="deleteMessage(message.id)"
+                      [disabled]="isDeleting(message.id)"
+                      class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+                    >
+                      <lucide-icon [img]="TrashIcon" [size]="16" />
+                      <span>Elimina</span>
+                    </button>
+                  } @else {
+                    <!-- Nascondi (messaggio altrui) -->
+                    <button
+                      type="button"
+                      (click)="deleteMessage(message.id)"
+                      [disabled]="isDeleting(message.id)"
+                      class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+                    >
+                      <lucide-icon [img]="EyeOffIcon" [size]="16" />
+                      <span>Nascondi</span>
+                    </button>
+                  }
+                </div>
+              </app-dropdown>
+
+              <!-- Footer: timestamp e stato lettura -->
+              <div class="text-xs mt-1 flex items-center gap-1">
+                <app-time-ago [date]="message.createdAt" class="text-gray-500 dark:text-gray-400" />
+                @if (message.mittente.id === currentUserId()) {
+                  <span class="mx-1 text-gray-500 dark:text-gray-400">·</span>
+                  <span [class.text-primary-500]="message.isRead" class="text-gray-500 dark:text-gray-400">
+                    {{ message.isRead ? 'Letto' : 'Inviato' }}
+                  </span>
+                }
+              </div>
+            </div>
           </div>
         }
       }
@@ -127,7 +205,51 @@
 
   <!-- Input area - altezza fissa, sempre in basso -->
   <div class="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+    <!-- Preview immagine -->
+    @if (imagePreviewUrl()) {
+      <div class="relative inline-block mb-3">
+        <img
+          [src]="imagePreviewUrl()"
+          alt="Preview immagine"
+          class="h-20 w-auto rounded-lg object-cover"
+        />
+        @if (isUploadingImage()) {
+          <div class="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+            <div class="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        }
+        <button
+          type="button"
+          (click)="clearImagePreview()"
+          class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-gray-800 text-white flex items-center justify-center hover:bg-gray-700 transition-colors"
+          aria-label="Rimuovi immagine"
+        >
+          <lucide-icon [img]="XIcon" [size]="14" />
+        </button>
+      </div>
+    }
+
     <div class="flex items-end gap-3">
+      <!-- Image picker (hidden input) -->
+      <input
+        #imageInputRef
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        (change)="onImageSelected($event)"
+        class="hidden"
+      />
+
+      <!-- Image button -->
+      <button
+        type="button"
+        (click)="openImagePicker()"
+        [disabled]="isSending() || isUploadingImage()"
+        class="flex-shrink-0 w-10 h-10 rounded-full text-gray-500 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+        aria-label="Allega immagine"
+      >
+        <lucide-icon [img]="ImageIcon" [size]="20" />
+      </button>
+
       <!-- Text input -->
       <div class="flex-1 relative">
         <input
@@ -136,7 +258,7 @@
           (input)="onMessageInput($any($event.target).value)"
           (keydown)="onKeyDown($event)"
           placeholder="Scrivi un messaggio..."
-          class="w-full px-4 py-3 pr-12 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors"
+          class="w-full px-4 py-3 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors"
           [disabled]="isSending()"
         />
       </div>
@@ -154,3 +276,25 @@
     </div>
   </div>
 </div>
+
+<!-- Image Viewer Overlay -->
+@if (imageViewerUrl()) {
+  <div
+    class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+    (click)="closeImageViewer()"
+  >
+    <button
+      type="button"
+      class="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+      aria-label="Chiudi"
+    >
+      <lucide-icon [img]="XIcon" [size]="24" />
+    </button>
+    <img
+      [src]="imageViewerUrl()"
+      alt="Immagine ingrandita"
+      class="max-w-full max-h-full object-contain"
+      (click)="$event.stopPropagation()"
+    />
+  </div>
+}

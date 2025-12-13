@@ -29,13 +29,27 @@ export class VerifyEmailComponent implements OnInit {
   readonly isResending = signal<boolean>(false);
   readonly showResendForm = signal<boolean>(false);
 
+  // Stato per quando l'utente arriva dalla registrazione (senza token)
+  readonly isPendingVerification = signal<boolean>(false);
+  readonly userEmail = signal<string>('');
+
   readonly resendForm: FormGroup = this.fb.group({
     email: ['', [Validators.required, schoolEmailValidator()]],
   });
 
   ngOnInit(): void {
-    // Estrae il token dai query params
+    // Estrae il token e l'email dai query params
     const token = this.route.snapshot.queryParamMap.get('token');
+    const email = this.route.snapshot.queryParamMap.get('email');
+
+    if (!token && email) {
+      // Scenario: utente arriva dalla registrazione
+      this.isLoading.set(false);
+      this.isPendingVerification.set(true);
+      this.userEmail.set(email);
+      this.resendForm.patchValue({ email });
+      return;
+    }
 
     if (!token) {
       this.isLoading.set(false);
@@ -51,7 +65,7 @@ export class VerifyEmailComponent implements OnInit {
         this.toastService.success(
           response.message || 'Email verificata con successo!'
         );
-        
+
         // Redirect rimosso - l'utente decide quando andare al login
       },
       error: (error) => {

@@ -145,6 +145,7 @@ export interface MessageResponseDTO {
   imageUrl: string | null;
   isRead: boolean;
   isDeletedBySender: boolean;
+  isHiddenByCurrentUser: boolean;
   createdAt: string; // ISO 8601 format
 }
 
@@ -287,7 +288,8 @@ export interface CreaCommentoRequestDTO {
  */
 export interface InviaMessaggioRequestDTO {
   destinatarioId: number;
-  contenuto: string; // Max 5000 caratteri
+  contenuto?: string; // Max 5000 caratteri (opzionale se c'è imageUrl)
+  imageUrl?: string; // URL immagine Cloudinary (opzionale)
 }
 
 /**

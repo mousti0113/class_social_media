@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, effect, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -50,6 +50,9 @@ export class PostDetailComponent implements OnInit, OnDestroy {
   private readonly authStore = inject(AuthStore);
 
   private readonly subscriptions: Subscription[] = [];
+
+  // Riferimento al form commenti
+  readonly commentFormRef = viewChild<CommentFormComponent>('commentForm');
 
   // Icone Lucide
   readonly ArrowLeftIcon = ArrowLeft;
@@ -121,11 +124,13 @@ export class PostDetailComponent implements OnInit, OnDestroy {
       this.isLoading.set(false);
     }
 
-    // Scroll ai commenti se richiesto
+    // Scroll ai commenti e focus se richiesto
     const fragment = this.route.snapshot.fragment;
     if (fragment === 'comments') {
       setTimeout(() => {
         document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth' });
+        // Focus sull'input commenti
+        this.commentFormRef()?.focus();
       }, 500);
     }
   }
@@ -543,5 +548,13 @@ export class PostDetailComponent implements OnInit, OnDestroy {
    */
   closeImagePreview(): void {
     this.isImagePreviewOpen.set(false);
+  }
+
+  /**
+   * Focus sull'input commenti e scroll alla sezione commenti
+   */
+  focusCommentInput(): void {
+    document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth' });
+    this.commentFormRef()?.focus();
   }
 }

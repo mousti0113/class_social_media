@@ -137,11 +137,7 @@ public class SecurityConfig {
                 .map(String::trim)
                 .toList();
 
-        // Log per debug - RIMUOVERE IN PRODUZIONE
-        System.out.println("=== CORS Configuration ===");
-        System.out.println("Raw CORS_ALLOWED_ORIGINS: " + corsAllowedOrigins);
-        System.out.println("Parsed allowed origins: " + allowedOrigins);
-        System.out.println("========================");
+
 
         // Usa setAllowedOriginPatterns invece di setAllowedOrigins per supportare wildcard
         configuration.setAllowedOriginPatterns(allowedOrigins);
