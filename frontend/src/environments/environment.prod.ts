@@ -2,10 +2,10 @@ export const environment = {
   production: true,
 
   // Backend API URL (ngrok/Cloudflare Tunnel)
-  apiUrl: 'https://hood-impressed-rooms-del.trycloudflare.com/api',
+  apiUrl: 'https://quantum-lat-mayor-plants.trycloudflare.com/api',
 
   // WebSocket URL (ngrok/Cloudflare Tunnel)
-  wsUrl: 'https://hood-impressed-rooms-del.trycloudflare.com/ws',
+  wsUrl:  'https://quantum-lat-mayor-plants.trycloudflare.com/ws',
 
   // Cloudinary Storage Configuration 
   cloudinary: {

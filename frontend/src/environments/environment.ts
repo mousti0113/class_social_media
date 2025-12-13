@@ -1,8 +1,8 @@
 export const environment = {
   production: true,
 
-  apiUrl: 'http://localhost:8080/api',
-  wsUrl: 'http://localhost:8080/ws',
+  apiUrl: 'https://quantum-lat-mayor-plants.trycloudflare.com/api',
+  wsUrl: 'https://quantum-lat-mayor-plants.trycloudflare.com/ws',
 
   // Cloudinary Storage Configuration
   cloudinary: {
