@@ -7,6 +7,7 @@ import com.example.backend.exception.AdminProtectionException;
 import com.example.backend.exception.InvalidInputException;
 import com.example.backend.models.*;
 import com.example.backend.repositories.*;
+import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,7 @@ public class AdminService {
     private final HiddenCommentRepository hiddenCommentRepository;
     private final MentionRepository mentionRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final EntityManager entityManager;
 
     private static final String TARGET_TYPE_USER = "USER";
     private static final String TARGET_TYPE_POST = "POST";
@@ -171,18 +173,24 @@ public class AdminService {
             log.debug("Nullificati riferimenti audit log per utente {}", userId);
 
             // --- FASE 3: Eliminare contenuti principali dell'utente ---
+            // ORDINE CRITICO per rispettare vincoli FK:
+            // 1. Commenti (referenziano post, possono avere like)
+            // 2. Like (referenziano post/commenti)
+            // 3. Post (hanno commenti e like come figli via cascade)
 
             // 3.1 Messaggi diretti
             eliminaTuttiMessaggi(userId);
 
-            // 3.2 Commenti su post di altri (DEVE essere eliminato PRIMA dei post per evitare violazione FK)
+            // 3.2 Commenti dell'utente (HARD DELETE - PRIMA dei like e post)
+            // I commenti vengono eliminati fisicamente per rispettare FK constraints
             eliminaTuttiCommenti(userId);
 
-            // 3.3 Post (ora i commenti sono stati eliminati)
-            eliminaTuttiPost(userId);
-
-            // 3.4 Like su post di altri
+            // 3.3 Like dell'utente su post/commenti di altri (DOPO i commenti)
             eliminaTuttiLike(userId);
+
+            // 3.4 Post dell'utente (ULTIMO - ora commenti e like sono stati eliminati)
+            // Il cascade eliminerà automaticamente commenti e like rimasti sui post dell'utente
+            eliminaTuttiPost(userId);
 
             // --- FASE 4: Eliminare l'utente ---
             userRepository.deleteByUserId(targetUserId);
@@ -408,7 +416,7 @@ public class AdminService {
      * @return Il numero totale di commenti eliminati (incluso il parent)
      */
     private int deleteCommentAndChildrenAdmin(Comment comment) {
-        if (comment.getIsDeletedByAuthor()) {
+        if (comment.getIsDeletedByAuthor().booleanValue()) {
             // Già eliminato, skippa
             return 0;
         }
@@ -656,6 +664,10 @@ public class AdminService {
 
         postRepository.deleteAll(posts);
 
+        // Forza l'esecuzione immediata delle DELETE per evitare FK constraint violations
+        // quando si elimina l'utente successivamente
+        entityManager.flush();
+
         log.debug("Eliminati {} post dell'utente {}", count, userId);
         return count;
     }
@@ -663,43 +675,45 @@ public class AdminService {
     /**
      * Elimina tutti i commenti di un utente.
      *
+     * IMPORTANTE: Quando chiamato durante eliminazione utente, fa HARD DELETE
+     * per rispettare i vincoli FK. I commenti vengono eliminati fisicamente dal database.
+     *
      * THREAD-SAFETY e ATOMICITÀ:
      * - Ottiene la lista dei post affetti prima dell'eliminazione
      * - Elimina tutti i commenti in batch
-     * - Sincronizza atomicamente i contatori per ogni post affetto
-     *
+     * - Sincronizza atomicamente i contatori per ogni post affetti
      *
      */
     private int eliminaTuttiCommenti(Long userId) {
         List<Comment> comments = commentRepository.findByUserId(userId);
-        int count = 0;
+        int count = comments.size();
 
-        if (comments.isEmpty()) {
+        if (count == 0) {
             return 0;
         }
 
-        // Soft delete di ogni commento con eventi per WebSocket
+        // Raccogli tutti i post ID affetti per aggiornare i contatori
+        Map<Long, Integer> postCommentsCount = new HashMap<>();
         for (Comment comment : comments) {
-            if (!comment.getIsDeletedByAuthor()) {
-                Long postId = comment.getPost().getId();
-                Long commentId = comment.getId();
-                
-                // Soft delete
-                comment.setIsDeletedByAuthor(true);
-                commentRepository.save(comment);
-                
-                // Decrementa contatore
-                postRepository.updateCommentsCount(postId, -1);
-                
-                // Pubblica eventi
-                eventPublisher.publishEvent(new DeleteMentionsEvent(MentionableType.COMMENT, commentId));
-                eventPublisher.publishEvent(new CommentDeletedEvent(postId, commentId));
-                
-                count++;
-            }
+            Long postId = comment.getPost().getId();
+            postCommentsCount.put(postId, postCommentsCount.getOrDefault(postId, 0) + 1);
         }
 
-        log.debug("Soft delete di {} commenti dell'utente {}", count, userId);
+        // HARD DELETE - Elimina fisicamente i commenti dal database
+        // Questo è necessario quando eliminiamo un utente per rispettare i vincoli FK
+        commentRepository.deleteAll(comments);
+
+        // Forza l'esecuzione immediata delle DELETE
+        entityManager.flush();
+
+        // Aggiorna i contatori dei post affetti
+        for (Map.Entry<Long, Integer> entry : postCommentsCount.entrySet()) {
+            Long postId = entry.getKey();
+            Integer deletedCount = entry.getValue();
+            postRepository.updateCommentsCount(postId, -deletedCount);
+        }
+
+        log.debug("Hard delete di {} commenti dell'utente {} da {} post", count, userId, postCommentsCount.size());
         return count;
     }
 
