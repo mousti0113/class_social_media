@@ -30,7 +30,7 @@
             </button>
 
             @if (isFilterDropdownOpen()) {
-              <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-20">
+              <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-20 max-w-[calc(100vw-2rem)]">
                 @for (option of filterOptions; track option.value) {
                   <button
                     type="button"
