@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { UserService } from '../api/user-service';
 import { UserSummaryDTO } from '../../models';
 import { interval, Subscription, firstValueFrom } from 'rxjs';
@@ -66,6 +66,9 @@ export class OnlineUsersStore {
 
     // Sottoscrivi agli eventi WebSocket per aggiornamenti real-time
     this.subscribeToWebSocketEvents();
+
+    // Carica gli utenti online quando il WebSocket si connette
+    this.subscribeToWebSocketConnection();
   }
 
   // ============================================================================
@@ -90,6 +93,21 @@ export class OnlineUsersStore {
       } else if (event.type === 'user_offline') {
         // Rimuovi l'utente dalla lista online
         this.markUserOffline(event.userId);
+      }
+    });
+  }
+
+  /**
+   * Carica la lista utenti online quando il WebSocket si connette
+   */
+  private subscribeToWebSocketConnection(): void {
+    // Usa effect per reagire ai cambiamenti dello stato connected del WebSocket
+    effect(() => {
+      const isConnected = this.websocketService.connected();
+
+      // Quando il WebSocket si connette, carica la lista degli utenti online
+      if (isConnected) {
+        this.loadOnlineUsers();
       }
     });
   }

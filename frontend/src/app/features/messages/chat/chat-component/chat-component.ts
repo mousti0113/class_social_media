@@ -11,7 +11,6 @@ import { WebsocketService } from '../../../../core/services/websocket-service';
 import { AuthStore } from '../../../../core/stores/auth-store';
 import { OnlineUsersStore } from '../../../../core/stores/online-users-store';
 import { MessageResponseDTO, UserSummaryDTO } from '../../../../models';
-import { MessageBubbleComponent } from '../../../../shared/components/message-bubble/message-bubble-component/message-bubble-component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar-component/avatar-component';
 import { SkeletonComponent } from '../../../../shared/ui/skeleton/skeleton-component/skeleton-component';
 import { DropdownComponent } from '../../../../shared/ui/dropdown/dropdown-component/dropdown-component';
@@ -31,7 +30,6 @@ import { TimeAgoComponent } from '../../../../shared/components/time-ago/time-ag
     CommonModule,
     FormsModule,
     LucideAngularModule,
-    MessageBubbleComponent,
     AvatarComponent,
     SkeletonComponent,
     DropdownComponent,

@@ -62,7 +62,6 @@ public class WebSocketSessionEventListener {
      * @param event L'evento di connessione
      */
     @EventListener
-    @Transactional
     public void handleWebSocketConnectListener(SessionConnectedEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         String sessionId = headerAccessor.getSessionId();
@@ -75,42 +74,71 @@ public class WebSocketSessionEventListener {
             log.info("WebSocket Connected - User: {}, SessionId: {}", username, sessionId);
             log.debug("Utenti attualmente connessi: {}", activeUsers.size());
 
-            // Aggiorna o crea UserSession nel database
-            try {
-                Optional<UserSession> existingSession = userSessionRepository.findBySessionId(sessionId);
+            // Aggiorna o crea UserSession nel database (con transazione separata)
+            updateUserSessionOnConnect(username, sessionId);
 
-                if (existingSession.isPresent()) {
-                    // Sessione già esistente, aggiorna
-                    UserSession session = existingSession.get();
-                    session.setIsOnline(true);
-                    session.setLastActivity(LocalDateTime.now());
-                    userSessionRepository.save(session);
-                    log.debug("UserSession aggiornata per {}", username);
-                } else {
-                    // Nuova sessione, viene creata
-                    User userEntity = userRepository.findByUsernameAndIsActiveTrue(username)
-                            .orElseThrow(() -> new RuntimeException("Utente non trovato o non attivo: " + username));
-
-                    UserSession newSession = UserSession.builder()
-                            .user(userEntity)
-                            .sessionId(sessionId)
-                            .isOnline(true)
-                            .lastActivity(LocalDateTime.now())
-                            .createdAt(LocalDateTime.now())
-                            .build();
-
-                    userSessionRepository.save(newSession);
-                    log.info("Nuova UserSession creata per {} - SessionId: {}", username, sessionId);
-                }
-
-                // Broadcast evento user online a tutti i client connessi
-                broadcastUserOnlineStatus(username, true);
-
-            } catch (Exception e) {
-                log.error("Errore aggiornamento UserSession per {}: {}", username, e.getMessage());
-            }
+            // Broadcast evento user online a tutti i client connessi (fuori dalla transazione)
+            broadcastUserOnlineStatus(username, true);
         } else {
             log.warn("WebSocket Connected senza autenticazione - SessionId: {}", sessionId);
+        }
+    }
+
+    /**
+     * Aggiorna la sessione utente nel database quando si connette
+     */
+    @Transactional
+    private void updateUserSessionOnConnect(String username, String sessionId) {
+        try {
+            Optional<UserSession> existingSession = userSessionRepository.findBySessionId(sessionId);
+
+            if (existingSession.isPresent()) {
+                // Sessione già esistente, aggiorna
+                UserSession session = existingSession.get();
+                session.setIsOnline(true);
+                session.setLastActivity(LocalDateTime.now());
+                userSessionRepository.save(session);
+                log.debug("UserSession aggiornata per {}", username);
+            } else {
+                // Nuova sessione, viene creata
+                User userEntity = userRepository.findByUsernameAndIsActiveTrue(username)
+                        .orElseThrow(() -> new RuntimeException("Utente non trovato o non attivo: " + username));
+
+                UserSession newSession = UserSession.builder()
+                        .user(userEntity)
+                        .sessionId(sessionId)
+                        .isOnline(true)
+                        .lastActivity(LocalDateTime.now())
+                        .createdAt(LocalDateTime.now())
+                        .build();
+
+                userSessionRepository.save(newSession);
+                log.info("Nuova UserSession creata per {} - SessionId: {}", username, sessionId);
+            }
+        } catch (Exception e) {
+            log.error("Errore aggiornamento UserSession per {}: {}", username, e.getMessage());
+        }
+    }
+
+    /**
+     * Aggiorna la sessione utente nel database quando si disconnette
+     */
+    @Transactional
+    private void updateUserSessionOnDisconnect(String username, String sessionId) {
+        try {
+            Optional<UserSession> session = userSessionRepository.findBySessionId(sessionId);
+
+            if (session.isPresent()) {
+                UserSession userSession = session.get();
+                userSession.setIsOnline(false);
+                userSession.setLastActivity(LocalDateTime.now());
+                userSessionRepository.save(userSession);
+                log.info("UserSession marcata offline per {} - SessionId: {}", username, sessionId);
+            } else {
+                log.warn("UserSession non trovata per sessionId: {}", sessionId);
+            }
+        } catch (Exception e) {
+            log.error("Errore aggiornamento UserSession offline per {}: {}", username, e.getMessage());
         }
     }
 
@@ -126,7 +154,6 @@ public class WebSocketSessionEventListener {
      * @param event L'evento di disconnessione
      */
     @EventListener
-    @Transactional
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         String sessionId = headerAccessor.getSessionId();
@@ -136,25 +163,11 @@ public class WebSocketSessionEventListener {
             log.info("WebSocket Disconnected - User: {}, SessionId: {}", username, sessionId);
             log.debug("Utenti rimanenti connessi: {}", activeUsers.size());
 
-            // Aggiorna UserSession nel database
-            try {
-                Optional<UserSession> session = userSessionRepository.findBySessionId(sessionId);
+            // Aggiorna UserSession nel database (con transazione separata)
+            updateUserSessionOnDisconnect(username, sessionId);
 
-                if (session.isPresent()) {
-                    UserSession userSession = session.get();
-                    userSession.setIsOnline(false);
-                    userSession.setLastActivity(LocalDateTime.now());
-                    userSessionRepository.save(userSession);
-                    log.info("UserSession marcata offline per {} - SessionId: {}", username, sessionId);
-
-                    // Broadcast evento user offline a tutti i client connessi
-                    broadcastUserOnlineStatus(username, false);
-                } else {
-                    log.warn("UserSession non trovata per sessionId: {}", sessionId);
-                }
-            } catch (Exception e) {
-                log.error("Errore aggiornamento UserSession offline per {}: {}", username, e.getMessage());
-            }
+            // Broadcast evento user offline a tutti i client connessi (fuori dalla transazione)
+            broadcastUserOnlineStatus(username, false);
         } else {
             log.debug("WebSocket Disconnected - SessionId: {}", sessionId);
         }
@@ -248,7 +261,7 @@ public class WebSocketSessionEventListener {
                 presenceEvent.put("type", isOnline ? "user_online" : "user_offline");
                 presenceEvent.put("userId", user.getId());
                 presenceEvent.put("username", user.getUsername());
-                presenceEvent.put("nomeCompleto", user.getNomeCompleto());
+                presenceEvent.put("nomeCompleto", user.getFullName());
                 presenceEvent.put("profilePictureUrl", user.getProfilePictureUrl());
                 presenceEvent.put("isOnline", isOnline);
                 presenceEvent.put("timestamp", System.currentTimeMillis());

@@ -1,13 +1,13 @@
-<!-- Container toast posizionato in alto a destra -->
-<div class="fixed top-2 right-2 left-2 sm:left-auto sm:top-4 sm:right-4 z-50 flex flex-col gap-2 max-w-full sm:max-w-sm md:max-w-md pointer-events-none">
-  
+<!-- Container toast posizionato in alto al centro su mobile, destra su desktop -->
+<div class="fixed top-4 left-1/2 -translate-x-1/2 sm:left-auto sm:right-4 sm:translate-x-0 z-50 flex flex-col gap-2 w-[calc(100%-2rem)] max-w-xs sm:max-w-sm pointer-events-none">
+
   <!-- Itera su tutti i toast attivi-->
   @for (toast of toasts(); track toast.id) {
-    <div 
+    <div
       animate.enter="toast-enter"
       animate.leave="toast-leave"
       [ngClass]="getToastClasses(toast.type)"
-      class="pointer-events-auto w-full max-w-full"
+      class="pointer-events-auto w-full"
       role="alert"
       [attr.aria-live]="toast.type === 'error' ? 'assertive' : 'polite'"
     >
