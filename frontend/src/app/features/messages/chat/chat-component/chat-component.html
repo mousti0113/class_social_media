@@ -117,7 +117,7 @@
                   >
                     <!-- Immagine allegata -->
                     @if (message.imageUrl) {
-                      <div class="-mx-4 -mt-2 -mb-2">
+                      <div class="-mx-4 -mt-2" [class.-mb-2]="!message.contenuto">
                         <img
                           [src]="message.imageUrl"
                           alt="Immagine allegata"
@@ -129,7 +129,7 @@
 
                     <!-- Contenuto testuale -->
                     @if (message.contenuto) {
-                      <p class="text-sm whitespace-pre-wrap break-words">{{ message.contenuto }}</p>
+                      <p class="text-sm whitespace-pre-wrap break-words" [class.mt-2]="message.imageUrl">{{ message.contenuto }}</p>
                     }
                   </div>
                 </div>
