@@ -169,7 +169,8 @@
                 type="button"
                 (click)="openLikesModal()"
                 [disabled]="localLikesCount() === 0"
-                class="hover:underline disabled:cursor-default disabled:hover:no-underline transition-all"
+                class="hover:underline disabled:cursor-default disabled:hover:no-underline transition-all touch-manipulation active:opacity-70"
+                [style.cursor]="localLikesCount() > 0 ? 'pointer' : 'default'"
               >
                 <strong class="text-gray-900 dark:text-white">{{ localLikesCount() }}</strong>
                 {{ localLikesCount() === 1 ? 'Mi piace' : 'Mi piace' }}
@@ -322,7 +323,7 @@
           <button
             type="button"
             (click)="goToUserProfile(user.username)"
-            class="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            class="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors touch-manipulation active:bg-gray-100 dark:active:bg-gray-700"
           >
             <app-avatar
               [src]="user.profilePictureUrl"
