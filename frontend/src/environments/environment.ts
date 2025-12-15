@@ -1,8 +1,8 @@
 export const environment = {
   production: true,
 
-  apiUrl: 'https://promising-backed-only-und.trycloudflare.com/api',
-  wsUrl: 'https://promising-backed-only-und.trycloudflare.com/ws',
+  apiUrl: 'https://concord-eggs-partition-travelers.trycloudflare.com/api',
+  wsUrl: 'https://concord-eggs-partition-travelers.trycloudflare.com/ws',
 
   // Cloudinary Storage Configuration
   cloudinary: {
