@@ -74,15 +74,22 @@
 
         <!-- Avatar + Info row -->
         <div class="flex items-center gap-4 mb-3">
-          <!-- Avatar with online status -->
-          <app-avatar
-            [src]="user()!.profilePictureUrl"
-            [alt]="user()!.nomeCompleto"
-            [name]="user()!.nomeCompleto"
-            size="xl"
-            [status]="isOwnProfile() ? 'none' : (isOnline() ? 'online' : 'none')"
-            class="ring-4 ring-white dark:ring-gray-900 shadow-lg shrink-0"
-          />
+          <!-- Avatar with online status (clickable to view full size) -->
+          <button
+            type="button"
+            (click)="openProfilePictureViewer()"
+            class="shrink-0 rounded-full transition-opacity hover:opacity-90 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+            [attr.aria-label]="'Visualizza foto profilo di ' + user()!.nomeCompleto"
+          >
+            <app-avatar
+              [src]="user()!.profilePictureUrl"
+              [alt]="user()!.nomeCompleto"
+              [name]="user()!.nomeCompleto"
+              size="xl"
+              [status]="isOwnProfile() ? 'none' : (isOnline() ? 'online' : 'none')"
+              class="ring-4 ring-white dark:ring-gray-900 shadow-lg"
+            />
+          </button>
 
           <!-- Name and username -->
           <div class="min-w-0">
@@ -322,6 +329,32 @@
       [src]="selectedImageUrl()!"
       [alt]="'Foto di ' + user()?.nomeCompleto"
       class="max-w-full max-h-full object-contain"
+      (click)="$event.stopPropagation()"
+    />
+  </div>
+}
+
+<!-- Profile Picture Viewer Modal -->
+@if (isProfilePictureViewerOpen() && user()?.profilePictureUrl) {
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+    (click)="closeProfilePictureViewer()"
+  >
+    <!-- Close button -->
+    <button
+      type="button"
+      class="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
+      (click)="closeProfilePictureViewer()"
+      aria-label="Chiudi foto profilo"
+    >
+      <lucide-icon [img]="XIcon" [size]="24" />
+    </button>
+
+    <!-- Profile Picture -->
+    <img
+      [src]="user()!.profilePictureUrl!"
+      [alt]="'Foto profilo di ' + user()!.nomeCompleto"
+      class="max-w-full max-h-full object-contain rounded-lg"
       (click)="$event.stopPropagation()"
     />
   </div>

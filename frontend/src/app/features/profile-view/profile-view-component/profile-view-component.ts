@@ -64,6 +64,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
   // Image preview state per tab Media
   readonly selectedImageUrl = signal<string | null>(null);
 
+  // Profile picture viewer state
+  readonly isProfilePictureViewerOpen = signal(false);
+
   // Pagination
   readonly postsPage = signal(0);
   readonly postsTotalPages = signal(0);
@@ -248,5 +251,23 @@ export class ProfileComponent implements OnInit, OnDestroy {
    */
   closeImagePreview(): void {
     this.selectedImageUrl.set(null);
+  }
+
+  /**
+   * Apre il viewer della foto profilo
+   */
+  openProfilePictureViewer(): void {
+    const profileUser = this.user();
+    // Apri solo se c'è una foto profilo
+    if (profileUser?.profilePictureUrl) {
+      this.isProfilePictureViewerOpen.set(true);
+    }
+  }
+
+  /**
+   * Chiude il viewer della foto profilo
+   */
+  closeProfilePictureViewer(): void {
+    this.isProfilePictureViewerOpen.set(false);
   }
 }

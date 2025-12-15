@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { LucideAngularModule, ArrowLeft, Ellipsis, Pencil, Trash2, X, Check, Heart, MessageCircle, Share2 } from 'lucide-angular';
 import { Subscription } from 'rxjs';
 
-import { PostDettaglioResponseDTO, CommentResponseDTO } from '../../../../models';
+import { PostDettaglioResponseDTO, CommentResponseDTO, UserSummaryDTO } from '../../../../models';
 import { PostService } from '../../../../core/api/post-service';
 import { CommentService } from '../../../../core/api/comment-service';
 import { LikeService } from '../../../../core/api/like-service';
@@ -16,6 +16,7 @@ import { AuthStore } from '../../../../core/stores/auth-store';
 
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar-component/avatar-component';
 import { DropdownComponent } from '../../../../shared/ui/dropdown/dropdown-component/dropdown-component';
+import { ModalComponent } from '../../../../shared/ui/modal/modal-component/modal-component';
 import { CommentComponent } from '../../../../shared/components/comment/comment-component/comment-component';
 import { CommentFormComponent } from '../../../../shared/components/comment-form/comment-form-component/comment-form-component';
 import { TimeAgoComponent } from '../../../../shared/components/time-ago/time-ago-component/time-ago-component';
@@ -29,6 +30,7 @@ import { SafeMentionTextComponent } from '../../../../shared/components/safe-men
     LucideAngularModule,
     AvatarComponent,
     DropdownComponent,
+    ModalComponent,
     CommentComponent,
     CommentFormComponent,
     TimeAgoComponent,
@@ -82,6 +84,10 @@ export class PostDetailComponent implements OnInit, OnDestroy {
   readonly replyingTo = signal<CommentResponseDTO | null>(null);
 
   readonly isImagePreviewOpen = signal<boolean>(false);
+
+  readonly isLikesModalOpen = signal<boolean>(false);
+  readonly likesUsers = signal<UserSummaryDTO[]>([]);
+  readonly isLoadingLikes = signal<boolean>(false);
 
   readonly MAX_CONTENT_LENGTH = 5000;
 
@@ -307,6 +313,46 @@ export class PostDetailComponent implements OnInit, OnDestroy {
         this.toastService.error('Errore durante il like');
       }
     });
+  }
+
+  openLikesModal(): void {
+    const postData = this.post();
+    const count = this.localLikesCount();
+
+    // Apri il modal solo se ci sono like
+    if (!postData || count === 0) return;
+
+    this.isLikesModalOpen.set(true);
+    this.loadLikesUsers();
+  }
+
+  closeLikesModal(): void {
+    this.isLikesModalOpen.set(false);
+    this.likesUsers.set([]);
+  }
+
+  private loadLikesUsers(): void {
+    const postData = this.post();
+    if (!postData) return;
+
+    this.isLoadingLikes.set(true);
+
+    this.likeService.getPostLikes(postData.id, 0, 50).subscribe({
+      next: (response) => {
+        this.likesUsers.set(response.content);
+        this.isLoadingLikes.set(false);
+      },
+      error: (err) => {
+        console.error('Errore caricamento likes:', err);
+        this.isLoadingLikes.set(false);
+        this.toastService.error('Errore nel caricamento degli utenti');
+      }
+    });
+  }
+
+  goToUserProfile(username: string): void {
+    this.closeLikesModal();
+    this.router.navigate(['/profile', username]);
   }
 
   // ========== EDIT POST ==========

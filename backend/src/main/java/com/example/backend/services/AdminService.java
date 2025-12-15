@@ -38,6 +38,7 @@ public class AdminService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserSessionRepository userSessionRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final HiddenMessageRepository hiddenMessageRepository;
     private final HiddenPostRepository hiddenPostRepository;
     private final HiddenCommentRepository hiddenCommentRepository;
@@ -162,10 +163,11 @@ public class AdminService {
             mentionRepository.deleteByUserId(userId);
             log.debug("Eliminate tutte le menzioni dell'utente {}", userId);
 
-            // 2.5 Token e sessioni (FK: refresh_tokens, user_sessions, password_reset_tokens -> users)
+            // 2.5 Token e sessioni (FK: refresh_tokens, user_sessions, password_reset_tokens, email_verification_tokens -> users)
             refreshTokenRepository.deleteByUserId(userId);
             userSessionRepository.deleteByUserId(userId);
             passwordResetTokenRepository.deleteByUserId(userId);
+            emailVerificationTokenRepository.deleteByUserId(userId);
             log.debug("Eliminati token e sessioni dell'utente {}", userId);
 
             // 2.6 Audit log: NON eliminiamo ma settiamo a NULL il riferimento

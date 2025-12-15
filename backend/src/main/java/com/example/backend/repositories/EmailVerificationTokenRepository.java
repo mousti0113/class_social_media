@@ -47,4 +47,11 @@ public interface EmailVerificationTokenRepository extends JpaRepository<EmailVer
      * Conta token non verificati per un utente
      */
     long countByUserAndVerifiedFalse(User user);
+
+    /**
+     * Elimina tutti i token di un utente per ID
+     */
+    @Modifying
+    @Query("DELETE FROM EmailVerificationToken t WHERE t.user.id = :userId")
+    void deleteByUserId(Long userId);
 }
