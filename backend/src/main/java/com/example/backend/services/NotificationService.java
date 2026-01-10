@@ -532,6 +532,8 @@ public class NotificationService {
      * Funzionalità di pulizia che mantiene solo le notifiche non lette.
      * Utile per gli utenti che vogliono fare ordine nelle notifiche.
      *
+     * PERFORMANCE: Usa batch delete query invece di caricare tutte le notifiche.
+     *
      * @param userId L'ID dell'utente
      * @return Il numero di notifiche eliminate
      */
@@ -539,14 +541,7 @@ public class NotificationService {
     public int eliminaNotificheLette(Long userId) {
         log.debug("Eliminazione notifiche lette per utente {}", userId);
 
-        List<Notification> notifications = notificationRepository
-                .findByUserIdOrderByCreatedAtDesc(userId, Pageable.unpaged())
-                .stream()
-                .filter(Notification::getIsRead)
-                .toList();
-
-        int count = notifications.size();
-        notificationRepository.deleteAll(notifications);
+        int count = notificationRepository.deleteByUserIdAndIsReadTrue(userId);
 
         log.info("Eliminate {} notifiche lette per utente {}", count, userId);
         return count;

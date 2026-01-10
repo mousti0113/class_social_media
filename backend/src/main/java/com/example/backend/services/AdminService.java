@@ -5,6 +5,7 @@ import com.example.backend.events.CommentDeletedEvent;
 import com.example.backend.events.DeleteMentionsEvent;
 import com.example.backend.exception.AdminProtectionException;
 import com.example.backend.exception.InvalidInputException;
+import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.models.*;
 import com.example.backend.repositories.*;
 import jakarta.persistence.EntityManager;
@@ -98,7 +99,7 @@ public class AdminService {
         if (adminId != null && targetUserId != null) {
             User admin = userRepository.getReferenceById(adminId);
             User target = userRepository.findById(targetUserId)
-                    .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND_MESSAGE));
+                    .orElseThrow(() -> new ResourceNotFoundException("Utente", "id", targetUserId));
             // Impedisce eliminazione admin
             if (target.getIsAdmin().booleanValue()) {
                 throw new AdminProtectionException("Non è possibile eliminare un account admin");
@@ -213,7 +214,7 @@ public class AdminService {
         if (adminId != null && targetUserId != null) {
             User admin = userRepository.getReferenceById(adminId);
             User target = userRepository.findById(targetUserId)
-                    .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND_MESSAGE));
+                    .orElseThrow(() -> new ResourceNotFoundException("Utente", "id", targetUserId));
 
             if (target.getIsAdmin().booleanValue()) {
                 throw new AdminProtectionException("Non è possibile disattivare un account admin");
@@ -247,7 +248,7 @@ public class AdminService {
         if (adminId != null && targetUserId != null) {
             User admin = userRepository.getReferenceById(adminId);
             User target = userRepository.findById(targetUserId)
-                    .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND_MESSAGE));
+                    .orElseThrow(() -> new ResourceNotFoundException("Utente", "id", targetUserId));
 
             target.setIsActive(true);
             userRepository.save(target);
@@ -277,7 +278,7 @@ public class AdminService {
         if (adminId != null && targetUserId != null) {
             User admin = userRepository.getReferenceById(adminId);
             User target = userRepository.findById(targetUserId)
-                    .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND_MESSAGE));
+                    .orElseThrow(() -> new ResourceNotFoundException("Utente", "id", targetUserId));
 
             if (target.getIsAdmin().booleanValue()) {
                 throw new IllegalStateException("L'utente è già admin");
@@ -311,7 +312,7 @@ public class AdminService {
         if (adminId != null && targetUserId != null) {
             User admin = userRepository.getReferenceById(adminId);
             User target = userRepository.findById(targetUserId)
-                    .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND_MESSAGE));
+                    .orElseThrow(() -> new ResourceNotFoundException("Utente", "id", targetUserId));
 
             if (!target.getIsAdmin().booleanValue()) {
                 throw new IllegalStateException("L'utente non è admin");
@@ -350,7 +351,7 @@ public class AdminService {
         if (adminId != null && postId != null) {
             User admin = userRepository.getReferenceById(adminId);
             Post post = postRepository.findById(postId)
-                    .orElseThrow(() -> new RuntimeException("Post non trovato"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Post", "id", postId));
 
             // Elimina tutte le notifiche associate al post
             int notificationsDeleted = notificationRepository.deleteByRelatedPostId(postId);
@@ -386,7 +387,7 @@ public class AdminService {
         if (adminId != null && commentId != null) {
             User admin = userRepository.getReferenceById(adminId);
             Comment comment = commentRepository.findById(commentId)
-                    .orElseThrow(() -> new RuntimeException("Commento non trovato"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Commento", "id", commentId));
 
             Long postId = comment.getPost().getId();
             String commentAuthorUsername = comment.getUser().getUsername();
@@ -461,7 +462,7 @@ public class AdminService {
         if (adminId != null && targetUserId != null) {
             User admin = userRepository.getReferenceById(adminId);
             User target = userRepository.findById(targetUserId)
-                    .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND_MESSAGE));
+                    .orElseThrow(() -> new ResourceNotFoundException("Utente", "id", targetUserId));
 
             int count = eliminaTuttiPost(targetUserId);
 
@@ -491,7 +492,7 @@ public class AdminService {
         if (adminId != null && targetUserId != null) {
             User admin = userRepository.getReferenceById(adminId);
             User target = userRepository.findById(targetUserId)
-                    .orElseThrow(() -> new RuntimeException(USER_NOT_FOUND_MESSAGE));
+                    .orElseThrow(() -> new ResourceNotFoundException("Utente", "id", targetUserId));
 
             int count = eliminaTuttiCommenti(targetUserId);
 

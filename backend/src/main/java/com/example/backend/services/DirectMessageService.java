@@ -252,6 +252,9 @@ public class DirectMessageService {
         List<DirectMessage> messages = messageRepository
                 .findAllConversationMessages(userId, altroUtenteId);
 
+        // Lista per batch save dei HiddenMessages
+        List<HiddenMessage> hiddenMessagesToSave = new java.util.ArrayList<>();
+
         int count = 0;
         for (DirectMessage message : messages) {
             // Se è il mittente -> soft delete
@@ -264,14 +267,18 @@ public class DirectMessageService {
                             .message(message)
                             .user(user)
                             .build();
-                    hiddenMessageRepository.save(hiddenMessage);
+                    hiddenMessagesToSave.add(hiddenMessage);
                 }
             }
             count++;
         }
 
-        // Salva tutti i messaggi modificati in batch
+        // BATCH OPERATIONS: Salva tutti in un'unica operazione invece di loop individuale
         messageRepository.saveAll(messages);
+        if (!hiddenMessagesToSave.isEmpty()) {
+            hiddenMessageRepository.saveAll(hiddenMessagesToSave);
+            log.debug("Salvati {} hidden messages in batch", hiddenMessagesToSave.size());
+        }
 
         log.info("Eliminati/nascosti {} messaggi dalla conversazione", count);
         return count;

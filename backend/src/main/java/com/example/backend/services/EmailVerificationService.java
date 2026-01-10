@@ -1,5 +1,6 @@
 package com.example.backend.services;
 
+import com.example.backend.events.WelcomeEmailEvent;
 import com.example.backend.exception.InvalidTokenException;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.models.EmailVerificationToken;
@@ -8,6 +9,7 @@ import com.example.backend.repositories.EmailVerificationTokenRepository;
 import com.example.backend.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,7 @@ public class EmailVerificationService {
     private final EmailVerificationTokenRepository tokenRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final ApplicationEventPublisher eventPublisher;
 
     private static final int MAX_RESEND_ATTEMPTS_PER_HOUR = 3;
 
@@ -82,6 +85,10 @@ public class EmailVerificationService {
         tokenRepository.save(token);
 
         log.info("Email verificata con successo per utente: {} (ID: {})", user.getUsername(), user.getId());
+
+        // Pubblica evento per inviare email di benvenuto
+        eventPublisher.publishEvent(new WelcomeEmailEvent(user.getEmail(), user.getUsername()));
+        log.debug("Evento WelcomeEmailEvent pubblicato per utente: {}", user.getUsername());
     }
 
     /**

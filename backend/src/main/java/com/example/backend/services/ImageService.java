@@ -2,6 +2,7 @@ package com.example.backend.services;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import com.example.backend.exception.CloudinaryException;
 import com.example.backend.exception.InvalidInputException;
 import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.exception.UnauthorizedException;
@@ -75,13 +76,15 @@ public class ImageService {
 
             if (!"ok".equals(resultStatus) && !"not found".equals(resultStatus)) {
                 log.error("Errore eliminazione Cloudinary - Result: {}", result);
-                throw new RuntimeException("Errore durante l'eliminazione dell'immagine da Cloudinary");
+                throw new CloudinaryException("Errore durante l'eliminazione dell'immagine da Cloudinary");
             }
 
             log.info("Immagine eliminata da Cloudinary - Public ID: {}, Result: {}", publicId, resultStatus);
+        } catch (CloudinaryException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Eccezione durante eliminazione da Cloudinary", e);
-            throw new RuntimeException("Errore durante l'eliminazione dell'immagine: " + e.getMessage(), e);
+            throw new CloudinaryException("Errore durante l'eliminazione dell'immagine: " + e.getMessage(), e);
         }
 
         // Rimuovi riferimento dal database

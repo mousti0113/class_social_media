@@ -30,6 +30,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Conta tutti gli utenti (incluso admin)
     long count();
 
+    // Conta solo utenti attivi (ottimizzato - evita N+1 query)
+    long countByIsActiveTrue();
+
     // Trova l'admin
     Optional<User> findByIsAdminTrue();
 

@@ -1,5 +1,6 @@
 package com.example.backend.config;
 
+import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.models.User;
 import com.example.backend.models.UserSession;
 import com.example.backend.repositories.UserRepository;
@@ -102,7 +103,7 @@ public class WebSocketSessionEventListener {
             } else {
                 // Nuova sessione, viene creata
                 User userEntity = userRepository.findByUsernameAndIsActiveTrue(username)
-                        .orElseThrow(() -> new RuntimeException("Utente non trovato o non attivo: " + username));
+                        .orElseThrow(() -> new ResourceNotFoundException("Utente attivo", "username", username));
 
                 UserSession newSession = UserSession.builder()
                         .user(userEntity)

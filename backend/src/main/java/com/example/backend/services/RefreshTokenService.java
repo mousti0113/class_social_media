@@ -1,5 +1,6 @@
 package com.example.backend.services;
 
+import com.example.backend.exception.ResourceNotFoundException;
 import com.example.backend.models.RefreshToken;
 import com.example.backend.models.User;
 import com.example.backend.repositories.RefreshTokenRepository;
@@ -37,7 +38,7 @@ public class RefreshTokenService {
     @Transactional
     public RefreshToken creaRefreshToken(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Utente non trovato"));
+                .orElseThrow(() -> new ResourceNotFoundException("Utente", "id", userId));
 
         // Genera token in chiaro (da restituire al client)
         String plainToken = UUID.randomUUID().toString();

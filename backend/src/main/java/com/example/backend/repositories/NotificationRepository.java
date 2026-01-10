@@ -123,6 +123,17 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     int deleteAllByUserId(@Param("userId") Long userId);
 
     /**
+     * Elimina solo le notifiche lette di un utente (batch delete ottimizzato).
+     * Evita N+1 query caricando prima tutte le notifiche e filtrando in Java.
+     *
+     * @param userId ID dell'utente
+     * @return numero di notifiche eliminate
+     */
+    @Modifying
+    @Query("DELETE FROM Notification n WHERE n.user.id = :userId AND n.isRead = true")
+    int deleteByUserIdAndIsReadTrue(@Param("userId") Long userId);
+
+    /**
      * Elimina tutte le notifiche associate a un post specifico.
      * 
      * @param postId ID del post

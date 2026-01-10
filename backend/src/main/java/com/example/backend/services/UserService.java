@@ -410,11 +410,13 @@ public class UserService {
      * Conta solo gli utenti con account attivo.
      * Esclude utenti disattivati.
      *
+     * PERFORMANCE: Usa COUNT query invece di caricare tutti gli utenti.
+     *
      * @return numero di utenti attivi
      */
     @Transactional(readOnly = true)
     public long contaUtentiAttivi() {
-        return userRepository.findByIsActiveTrue().size();
+        return userRepository.countByIsActiveTrue();
     }
 
     /**
