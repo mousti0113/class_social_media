@@ -19,7 +19,7 @@ import {
   Moon,
   Monitor,
 } from 'lucide-angular';
-import { Subject, takeUntil, finalize } from 'rxjs';
+import { Subject, takeUntil, finalize, Observable } from 'rxjs';
 
 import { UserService } from '../../../core/api/user-service';
 import { AuthStore } from '../../../core/stores/auth-store';
@@ -87,6 +87,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
   readonly profilePictureUrl = signal<string | null>(null);
   readonly isUploadingImage = signal(false);
 
+  // Stato per gestire modifiche immagine in sospeso
+  private pendingImageFile: File | null = null;
+  private originalProfilePictureUrl: string | null = null;
+  private imageMarkedForDeletion = false;
+
   // Password form
   readonly vecchiaPassword = signal('');
   readonly nuovaPassword = signal('');
@@ -152,6 +157,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
       this.nomeCompleto.set(user.nomeCompleto);
       this.bio.set(user.bio || '');
       this.profilePictureUrl.set(user.profilePictureUrl);
+      this.originalProfilePictureUrl = user.profilePictureUrl;
+      this.pendingImageFile = null;
+      this.imageMarkedForDeletion = false;
     }
   }
 
@@ -185,68 +193,146 @@ export class SettingsComponent implements OnInit, OnDestroy {
   saveProfile(): void {
     this.isSaving.set(true);
 
-    const request: AggiornaProfiloRequestDTO = {
-      nomeCompleto: this.nomeCompleto(),
-      bio: this.bio() || undefined,
-      profilePictureUrl: this.profilePictureUrl() || undefined,
-    };
+    // 1. Prima gestisci le operazioni Cloudinary
+    this.handleCloudinaryOperations().subscribe({
+      next: (finalImageUrl: string | null) => {
+        // 2. Poi salva il profilo con l'URL finale
+        const request: AggiornaProfiloRequestDTO = {
+          nomeCompleto: this.nomeCompleto(),
+          bio: this.bio() || undefined,
+          profilePictureUrl: finalImageUrl || undefined,
+        };
 
-    this.userService.updateProfile(request)
-      .pipe(
-        takeUntil(this.destroy$),
-        finalize(() => this.isSaving.set(false))
-      )
-      .subscribe({
-        next: (updatedUser) => {
-          this.authStore.updateUser(updatedUser);
-          this.toastService.success('Profilo aggiornato con successo');
-        },
-        error: () => {
-          this.toastService.error('Errore durante il salvataggio');
-        }
-      });
+        this.userService.updateProfile(request)
+          .pipe(
+            takeUntil(this.destroy$),
+            finalize(() => this.isSaving.set(false))
+          )
+          .subscribe({
+            next: (updatedUser) => {
+              this.authStore.updateUser(updatedUser);
+              this.toastService.success('Profilo aggiornato con successo');
+
+              // Reset stato modifiche in sospeso
+              this.originalProfilePictureUrl = updatedUser.profilePictureUrl;
+              this.pendingImageFile = null;
+              this.imageMarkedForDeletion = false;
+            },
+            error: () => {
+              this.toastService.error('Errore durante il salvataggio');
+            }
+          });
+      },
+      error: (error: { message?: string }) => {
+        this.isSaving.set(false);
+        const message = error.message || 'Errore durante la gestione dell\'immagine';
+        this.toastService.error(message);
+      }
+    });
   }
 
   /**
-   * Gestisce upload immagine profilo
+   * Gestisce upload/delete su Cloudinary prima di salvare il profilo
+   */
+  private handleCloudinaryOperations(): Observable<string | null> {
+    return new Observable<string | null>((observer) => {
+      // Caso 1: Nuova immagine da uploadare
+      if (this.pendingImageFile) {
+        this.cloudinaryService.uploadImage(this.pendingImageFile, 'profile', () => {})
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+            next: (response) => {
+              // Se c'era una vecchia immagine su Cloudinary, eliminala
+              if (this.originalProfilePictureUrl?.includes('cloudinary.com')) {
+                this.cloudinaryService.deleteImage(this.originalProfilePictureUrl)
+                  .pipe(takeUntil(this.destroy$))
+                  .subscribe({
+                    next: () => observer.next(response.secureUrl),
+                    error: () => {
+                      // Anche se delete fallisce, procedi con il nuovo URL
+                      this.logger.warn('Impossibile eliminare la vecchia immagine da Cloudinary');
+                      observer.next(response.secureUrl);
+                    },
+                    complete: () => observer.complete()
+                  });
+              } else {
+                observer.next(response.secureUrl);
+                observer.complete();
+              }
+            },
+            error: (error) => observer.error(error)
+          });
+      }
+      // Caso 2: Immagine marcata per eliminazione (senza nuova immagine)
+      else if (this.imageMarkedForDeletion && this.originalProfilePictureUrl?.includes('cloudinary.com')) {
+        this.cloudinaryService.deleteImage(this.originalProfilePictureUrl)
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+            next: () => {
+              observer.next(null);
+              observer.complete();
+            },
+            error: () => {
+              // Anche se delete fallisce, rimuovi l'URL dal profilo
+              this.logger.warn('Impossibile eliminare l\'immagine da Cloudinary, ma l\'URL verrà rimosso dal profilo');
+              observer.next(null);
+              observer.complete();
+            }
+          });
+      }
+      // Caso 3: Nessuna modifica all'immagine
+      else {
+        observer.next(this.profilePictureUrl());
+        observer.complete();
+      }
+    });
+  }
+
+  /**
+   * Gestisce selezione immagine profilo (solo preview locale)
    */
   onImageUpload(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
-    
+
     if (!file) return;
 
-    this.isUploadingImage.set(true);
+    // Validazione tipo file
+    if (!file.type.startsWith('image/')) {
+      this.toastService.error('Seleziona un file immagine valido');
+      input.value = '';
+      return;
+    }
 
-    // Upload su Cloudinary
-    this.cloudinaryService.uploadImage(file, 'profile', (progress) => {
-      // Opzionale: mostra barra di progresso
-    })
-      .pipe(
-        takeUntil(this.destroy$),
-        finalize(() => this.isUploadingImage.set(false))
-      )
-      .subscribe({
-        next: (response) => {
-          this.profilePictureUrl.set(response.secureUrl);
-          this.toastService.success('Immagine caricata. Salva per applicare le modifiche.');
-        },
-        error: (error) => {
-          const message = error.message || 'Errore durante il caricamento dell\'immagine';
-          this.toastService.error(message);
-        }
-      });
+    // Validazione dimensione (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      this.toastService.error('L\'immagine deve essere inferiore a 5MB');
+      input.value = '';
+      return;
+    }
+
+    // Salva il file in attesa e crea preview locale
+    this.pendingImageFile = file;
+    this.imageMarkedForDeletion = false;
+
+    // Crea URL preview locale
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      this.profilePictureUrl.set(e.target?.result as string);
+      this.toastService.info('Immagine selezionata. Clicca su "Salva modifiche" per confermare.');
+    };
+    reader.readAsDataURL(file);
 
     // Reset input per permettere ri-caricamento stesso file
     input.value = '';
   }
 
   /**
-   * Rimuove immagine profilo
+   * Rimuove immagine profilo (solo rimozione locale)
    */
   async removeProfileImage(): Promise<void> {
     const currentUrl = this.profilePictureUrl();
-    
+
     if (!currentUrl) return;
 
     // Conferma eliminazione
@@ -259,33 +345,16 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
     if (!confirmed) return;
 
-    this.isUploadingImage.set(true);
+    // Rimuovi solo localmente
+    this.profilePictureUrl.set(null);
+    this.pendingImageFile = null;
 
-    // Se l'immagine è su Cloudinary, eliminala
-    if (currentUrl.includes('cloudinary.com')) {
-      this.cloudinaryService.deleteImage(currentUrl)
-        .pipe(
-          takeUntil(this.destroy$),
-          finalize(() => this.isUploadingImage.set(false))
-        )
-        .subscribe({
-          next: () => {
-            this.profilePictureUrl.set(null);
-            this.toastService.success('Foto profilo rimossa. Salva per applicare le modifiche.');
-          },
-          error: (error) => {
-            this.logger.error('Errore eliminazione immagine', error);
-            // Anche se l'eliminazione da Cloudinary fallisce, permetti di rimuovere l'URL
-            this.profilePictureUrl.set(null);
-            this.toastService.warning('Immagine rimossa dal profilo. Salva per applicare le modifiche.');
-          }
-        });
-    } else {
-      // URL non Cloudinary (es. base64 vecchio), rimuovi solo localmente
-      this.profilePictureUrl.set(null);
-      this.isUploadingImage.set(false);
-      this.toastService.success('Foto profilo rimossa. Salva per applicare le modifiche.');
+    // Se c'era una foto originale, marcala per eliminazione
+    if (this.originalProfilePictureUrl) {
+      this.imageMarkedForDeletion = true;
     }
+
+    this.toastService.info('Foto profilo rimossa. Clicca su "Salva modifiche" per confermare.');
   }
 
   /**
