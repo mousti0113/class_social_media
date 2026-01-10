@@ -2,6 +2,7 @@ import { Injectable, inject, effect } from '@angular/core';
 import { AuthStore } from '../../stores/auth-store';
 import { TokenService } from './token-service';
 import { AuthService } from './auth-service';
+import { LoggerService } from '../../services/logger.service';
 
 /**
  * Servizio per la gestione automatica del refresh token.
@@ -19,6 +20,7 @@ export class TokenRefreshService {
   private readonly authStore = inject(AuthStore);
   private readonly tokenService = inject(TokenService);
   private readonly authService = inject(AuthService);
+  private readonly logger = inject(LoggerService);
 
   private refreshTimerId: ReturnType<typeof setTimeout> | null = null;
 
@@ -50,7 +52,7 @@ export class TokenRefreshService {
     const expirationTime = this.tokenService.getTokenExpirationTime();
 
     if (!expirationTime) {
-      console.warn('Impossibile ottenere il tempo di scadenza del token');
+      this.logger.warn('Impossibile ottenere il tempo di scadenza del token');
       return;
     }
 
@@ -80,7 +82,7 @@ export class TokenRefreshService {
         this.scheduleTokenRefresh();
       },
       error: (error) => {
-        console.error('❌ Errore durante il refresh automatico del token:', error);
+        this.logger.error('Errore durante il refresh automatico del token', error);
         // L'error interceptor gestirà il logout
       }
     });

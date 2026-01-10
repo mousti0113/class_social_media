@@ -7,6 +7,7 @@ import { AuthStore } from '../../../../../core/stores/auth-store';
 import { OnlineUsersStore } from '../../../../../core/stores/online-users-store';
 import { UserService } from '../../../../../core/api/user-service';
 import { UserSummaryDTO } from '../../../../../models';
+import { LoggerService } from '../../../../../core/services/logger.service';
 
 
 /**
@@ -28,6 +29,7 @@ export class OnlineUsersDrawerComponent {
   private readonly authStore = inject(AuthStore);
   private readonly userService = inject(UserService);
   private readonly router = inject(Router);
+  private readonly logger = inject(LoggerService);
 
   // Icone
   readonly UsersIcon = Users;
@@ -76,7 +78,7 @@ export class OnlineUsersDrawerComponent {
   private loadAllUsers(): void {
     this.userService.getAllUsers(0, 100).subscribe({
       next: response => this._allUsers.set(response.content),
-      error: err => console.error('Errore caricamento utenti:', err),
+      error: err => this.logger.error('Errore caricamento utenti', err),
     });
   }
 

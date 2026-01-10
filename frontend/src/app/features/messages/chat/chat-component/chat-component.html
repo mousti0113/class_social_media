@@ -77,6 +77,8 @@
     <!-- Messages list -->
     @if (!isLoading() && messages().length > 0) {
       @for (message of messages(); track trackByMessageId($index, message)) {
+        <!-- Wrapper con id per scroll al messaggio -->
+        <div [id]="'message-' + message.id">
         <!-- Messaggio eliminato dal mittente -->
         @if (isMessageDeleted(message)) {
           <div [class]="message.mittente.id === currentUserId() ? 'flex justify-end' : 'flex justify-start'">
@@ -129,7 +131,7 @@
 
                     <!-- Contenuto testuale  -->
                     @if (message.contenuto) {
-                      <p class="text-sm whitespace-pre-wrap break-words px-4" [class.py-2]="!message.imageUrl" [class.pb-2]="message.imageUrl">{{ message.contenuto }}</p>
+                      <p class="text-sm whitespace-pre-wrap break-words px-4" [class.py-2]="!message.imageUrl" [class.pb-2]="message.imageUrl" [innerHTML]="getHighlightedContent(message)"></p>
                     }
                   </div>
                 </div>
@@ -186,6 +188,7 @@
             </div>
           </div>
         }
+        </div>
       }
 
       <!-- Typing indicator -->

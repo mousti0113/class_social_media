@@ -23,6 +23,7 @@ import { AdminService, AdminAuditLog } from '../../../../core/api/admin-service'
 import { ToastService } from '../../../../core/services/toast-service';
 import { ButtonComponent } from '../../../../shared/ui/button/button-component/button-component';
 import { PageResponse } from '../../../../models';
+import { LoggerService } from '../../../../core/services/logger.service';
 
 @Component({
   selector: 'app-audit-log-component',
@@ -41,6 +42,7 @@ export class AuditLogComponent implements OnInit, OnDestroy {
   private readonly adminService = inject(AdminService);
   private readonly toastService = inject(ToastService);
   private readonly destroy$ = new Subject<void>();
+  private readonly logger = inject(LoggerService);
 
   // Icone
   readonly ArrowLeftIcon = ArrowLeft;
@@ -133,7 +135,7 @@ export class AuditLogComponent implements OnInit, OnDestroy {
           this.totalPages.set(response.totalPages);
         },
         error: (error) => {
-          console.error('Errore nel caricamento dei log:', error);
+          this.logger.error('Errore nel caricamento dei log', error);
           this.hasError.set(true);
           this.toastService.error('Errore nel caricamento dei log');
         },

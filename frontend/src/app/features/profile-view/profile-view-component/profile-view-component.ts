@@ -19,6 +19,7 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton-componen
 import { PostCardComponent } from '../../../shared/components/post-card/post-card-component/post-card-component';
 import { InfiniteScroll } from '../../../shared/directives/infinite-scroll';
 import { SpinnerComponent } from '../../../shared/ui/spinner/spinner-component/spinner-component';
+import { LoggerService } from '../../../core/services/logger.service';
 
 type ProfileTab = 'posts' | 'media';
 
@@ -43,6 +44,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   private readonly postService = inject(PostService);
   private readonly authStore = inject(AuthStore);
   private readonly onlineUsersStore = inject(OnlineUsersStore);
+  private readonly logger = inject(LoggerService);
   private readonly destroy$ = new Subject<void>();
 
   // Icons
@@ -152,7 +154,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
           this.loadPosts(userId, true);
         },
         error: (err) => {
-          console.error('Error loading profile:', err);
+          this.logger.error('Error loading profile', err);
           this.error.set('Impossibile caricare il profilo');
         },
       });
@@ -184,7 +186,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
           this.postsTotalPages.set(response.totalPages);
         },
         error: (err) => {
-          console.error('Error loading posts:', err);
+          this.logger.error('Error loading posts', err);
         },
       });
   }

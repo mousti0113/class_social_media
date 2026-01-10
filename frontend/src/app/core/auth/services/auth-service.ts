@@ -17,6 +17,7 @@ import {
 import { TokenService } from './token-service';
 import { AuthStore } from '../../stores/auth-store';
 import { WebsocketService } from '../../services/websocket-service';
+import { LoggerService } from '../../services/logger.service';
 
 @Injectable({
   providedIn: 'root',
@@ -27,6 +28,7 @@ export class AuthService {
   private readonly tokenService = inject(TokenService);
   private readonly authStore = inject(AuthStore);
   private readonly websocketService = inject(WebsocketService);
+  private readonly logger = inject(LoggerService);
 
   private readonly API_URL = `${environment.apiUrl}/auth`;
 
@@ -254,8 +256,8 @@ export class AuthService {
   /**
    * Gestisce gli errori di autenticazione
    */
-  private handleAuthError(error: any): Observable<never> {
-    console.error('Errore autenticazione:', error);
+  private handleAuthError(error: unknown): Observable<never> {
+    this.logger.error('Errore autenticazione', error);
     return throwError(() => error);
   }
 }

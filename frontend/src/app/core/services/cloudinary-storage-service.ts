@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { catchError, from, Observable, switchMap, throwError } from 'rxjs';
+import { LoggerService } from './logger.service';
 /**
  * Tipo di immagine da caricare (determina la cartella su Cloudinary)
  * - profile: Immagini profilo utente
@@ -37,6 +38,7 @@ export class UploadValidationError extends Error {
 })
 export class CloudinaryStorageService {
   private readonly http = inject(HttpClient);
+  private readonly logger = inject(LoggerService);
 
   private readonly cloudName = environment.cloudinary.cloudName;
   private readonly uploadPreset = environment.cloudinary.uploadPreset;
@@ -70,7 +72,7 @@ export class CloudinaryStorageService {
         return this.performUpload(formData, onProgress);
       }),
       catchError((error) => {
-        console.error('Errore upload immagine:', error);
+        this.logger.error('Errore upload immagine', error);
         return throwError(() => error);
       })
     );
@@ -294,7 +296,7 @@ export class CloudinaryStorageService {
       params: { url: imageUrl }
     }).pipe(
       catchError((error) => {
-        console.error('Errore eliminazione immagine:', error);
+        this.logger.error('Errore eliminazione immagine', error);
         return throwError(() => error);
       })
     );

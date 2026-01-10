@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, signal, computed, ElementRef, viewChild, AfterViewChecked } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed, ElementRef, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -17,6 +17,7 @@ import { DropdownComponent } from '../../../../shared/ui/dropdown/dropdown-compo
 import { CloudinaryStorageService } from '../../../../core/services/cloudinary-storage-service';
 import { ToastService } from '../../../../core/services/toast-service';
 import { TimeAgoComponent } from '../../../../shared/components/time-ago/time-ago-component/time-ago-component';
+import { POLLING_INTERVALS, TIMEOUTS, LIMITS, UI_SPACING } from '../../../../core/config/app.config';
 
 /**
  * Chat view per una singola conversazione.
@@ -38,7 +39,7 @@ import { TimeAgoComponent } from '../../../../shared/components/time-ago/time-ag
   templateUrl: './chat-component.html',
   styleUrl: './chat-component.scss',
 })
-export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
+export class ChatComponent implements OnInit, OnDestroy {
   private readonly messagesContainer = viewChild<ElementRef<HTMLDivElement>>('messagesContainer');
   private readonly imageInputRef = viewChild<ElementRef<HTMLInputElement>>('imageInputRef');
 
@@ -53,16 +54,23 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   private readonly toastService = inject(ToastService);
   
   private routeSub?: Subscription;
+  private queryParamSub?: Subscription;
   private wsMessagesSub?: Subscription;
   private readonly pollingStop$ = new Subject<void>();
-  private shouldScrollToBottom = false;
+  private pendingScrollToMessageId: number | null = null;
+  private isFirstLoad = true;
   private currentOtherUserId: number | null = null;
   private lastTypingSent = 0;
 
-  // Polling intervals
-  private readonly MESSAGE_POLLING_INTERVAL = 3000;
-  private readonly TYPING_POLLING_INTERVAL = 2000;
-  private readonly TYPING_THROTTLE = 2000;
+  // Usa costanti centralizzate da app.config.ts
+  private readonly MESSAGE_POLLING_INTERVAL = POLLING_INTERVALS.MESSAGES;
+  private readonly TYPING_POLLING_INTERVAL = POLLING_INTERVALS.TYPING;
+  private readonly TYPING_THROTTLE = TIMEOUTS.TYPING_THROTTLE;
+  private readonly HIGHLIGHT_DURATION = TIMEOUTS.MESSAGE_HIGHLIGHT;
+  private readonly SCROLL_DELAY = TIMEOUTS.SCROLL_DELAY;
+  private readonly SCROLL_RETRY_DELAY = TIMEOUTS.SCROLL_RETRY_DELAY;
+  private readonly MAX_SCROLL_RETRIES = LIMITS.MAX_SCROLL_RETRIES;
+  private readonly MESSAGE_SPACING = UI_SPACING.MESSAGE_SPACING;
 
   // Icone
   readonly ArrowLeftIcon = ArrowLeft;
@@ -88,6 +96,10 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   readonly pendingImageUrl = signal<string | null>(null);
   readonly isUploadingImage = signal(false);
   readonly imageViewerUrl = signal<string | null>(null);
+
+  // ID messaggio evidenziato dalla ricerca e termine da evidenziare
+  readonly highlightedMessageId = signal<number | null>(null);
+  readonly highlightTerm = signal<string | null>(null);
 
   // ID utente corrente
   readonly currentUserId = computed(() => this.authStore.userId());
@@ -115,11 +127,48 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   });
 
   ngOnInit(): void {
+    // Gestisce i cambiamenti di userId (nuova conversazione)
     this.routeSub = this.route.paramMap.subscribe(params => {
       const userIdParam = params.get('userId');
       if (userIdParam) {
         const userId = Number.parseInt(userIdParam, 10);
+
+        // Leggi i query params correnti
+        const queryParams = this.route.snapshot.queryParamMap;
+        const messageIdParam = queryParams.get('messageId');
+        const highlightParam = queryParams.get('highlight');
+
+        // Imposta i parametri di ricerca PRIMA di switchToConversation
+        if (messageIdParam) {
+          const messageId = Number.parseInt(messageIdParam, 10);
+          this.pendingScrollToMessageId = messageId;
+          this.setHighlight(messageId, highlightParam);
+        } else {
+          this.pendingScrollToMessageId = null;
+          this.clearHighlight();
+        }
+
         this.switchToConversation(userId);
+      }
+    });
+
+    // Gestisce i cambiamenti dei query params (stesso userId ma messaggio diverso)
+    this.queryParamSub = this.route.queryParamMap.subscribe(params => {
+      const messageIdParam = params.get('messageId');
+      const highlightParam = params.get('highlight');
+
+      if (messageIdParam && this.currentOtherUserId !== null) {
+        const messageId = Number.parseInt(messageIdParam, 10);
+
+        // Se i messaggi sono già caricati, scrolla subito
+        if (this.messages().length > 0) {
+          this.setHighlight(messageId, highlightParam);
+          this.scrollToMessage(messageId);
+        } else {
+          // Altrimenti salva per dopo
+          this.pendingScrollToMessageId = messageId;
+          this.setHighlight(messageId, highlightParam);
+        }
       }
     });
 
@@ -139,12 +188,13 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
           
           if (!exists) {
             this.messages.set([...currentMessages, newMessage]);
-            this.shouldScrollToBottom = true;
+            // Scrolla in basso per nuovi messaggi
+            this.scrollToBottom();
           }
         }
       },
-      error: (err) => {
-        console.error('[Chat] Errore WebSocket messages:', err);
+      error: () => {
+        // Ignora errori WebSocket
       }
     });
   }
@@ -158,28 +208,41 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.stopPolling();
     this.pollingStop$.complete();
     this.routeSub?.unsubscribe();
+    this.queryParamSub?.unsubscribe();
     this.wsMessagesSub?.unsubscribe();
   }
 
-  ngAfterViewChecked(): void {
-    if (this.shouldScrollToBottom) {
-      this.scrollToBottom();
-      this.shouldScrollToBottom = false;
-    }
+  /**
+   * Imposta l'evidenziazione di un messaggio con timeout automatico
+   */
+  private setHighlight(messageId: number, term: string | null): void {
+    this.highlightedMessageId.set(messageId);
+    this.highlightTerm.set(term);
+    setTimeout(() => {
+      this.clearHighlight();
+    }, this.HIGHLIGHT_DURATION);
+  }
+
+  /**
+   * Rimuove l'evidenziazione
+   */
+  private clearHighlight(): void {
+    this.highlightedMessageId.set(null);
+    this.highlightTerm.set(null);
   }
 
   /**
    * Cambia conversazione - ferma polling vecchio e inizia nuovo
    */
   private switchToConversation(userId: number): void {
-    // Se è la stessa conversazione, non fare nulla
+    // Se è la stessa conversazione, non ricaricare
     if (this.currentOtherUserId === userId) {
       return;
     }
 
     // Ferma polling della conversazione precedente
     this.stopPolling();
-    
+
     // Reset stato
     this.currentOtherUserId = userId;
     this.messages.set([]);
@@ -188,7 +251,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.error.set(null);
     this.isOtherUserTyping.set(false);
     this.messageText.set('');
-    
+    this.isFirstLoad = true;
+
     // Carica nuova conversazione
     this.loadUserInfo(userId);
     this.startPolling(userId);
@@ -218,9 +282,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
           isOnline: user.isOnline,
         });
       },
-      error: (err) => {
+      error: () => {
         if (this.currentOtherUserId !== userId) return;
-        console.error('Errore caricamento utente:', err);
         this.error.set('Utente non trovato');
         this.isLoading.set(false);
       },
@@ -242,17 +305,28 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         next: (messages) => {
           // Verifica che sia ancora la stessa conversazione
           if (this.currentOtherUserId !== userId) return;
-          
+
           const currentMessages = this.messages();
-          const hadMessages = currentMessages.length > 0;
           const newMessagesCount = messages.length - currentMessages.length;
-          
+
           this.messages.set(messages);
           this.isLoading.set(false);
-          
-          // Scrolla solo se ci sono nuovi messaggi o è il primo caricamento
-          if (!hadMessages || newMessagesCount > 0) {
-            this.shouldScrollToBottom = true;
+
+          // Gestisce lo scroll dopo il caricamento
+          if (this.isFirstLoad && messages.length > 0) {
+            this.isFirstLoad = false;
+            // Se c'è un messaggio specifico da cercare, scrolla a quello SENZA ANIMAZIONE
+            if (this.pendingScrollToMessageId !== null) {
+              const messageId = this.pendingScrollToMessageId;
+              this.pendingScrollToMessageId = null;
+              this.scrollToMessage(messageId, true); // instant scroll
+            } else {
+              // Altrimenti scrolla in basso
+              this.scrollToBottom();
+            }
+          } else if (newMessagesCount > 0) {
+            // Nuovi messaggi arrivati, scrolla in basso
+            this.scrollToBottom();
           }
           
           // Marca come letti
@@ -260,9 +334,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             this.messageService.markConversationAsRead(userId).subscribe();
           }
         },
-        error: (err) => {
+        error: () => {
           if (this.currentOtherUserId !== userId) return;
-          console.error('Errore caricamento messaggi:', err);
           if (this.isLoading()) {
             this.error.set('Impossibile caricare i messaggi');
             this.isLoading.set(false);
@@ -326,12 +399,11 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
           this.messages.update(msgs => [...msgs, newMessage]);
           this.messageText.set('');
           this.clearImagePreview();
-          this.shouldScrollToBottom = true;
+          this.scrollToBottom();
         }
         this.isSending.set(false);
       },
-      error: (err) => {
-        console.error('Errore invio messaggio:', err);
+      error: () => {
         this.isSending.set(false);
       },
     });
@@ -349,15 +421,88 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private scrollToBottom(): void {
-    const container = this.messagesContainer();
-    if (container) {
-      const el = container.nativeElement;
-      el.scrollTop = el.scrollHeight;
-    }
+    // Usa requestAnimationFrame per assicurarsi che il DOM sia pronto
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const container = this.messagesContainer();
+        if (container) {
+          const el = container.nativeElement;
+          el.scrollTop = el.scrollHeight;
+        }
+      });
+    });
+  }
+
+  /**
+   * Scrolla a un messaggio specifico e lo centra nella vista
+   */
+  private scrollToMessage(messageId: number, instant = false, retryCount = 0): void {
+    // Aspetta che il DOM sia completamente renderizzato
+    setTimeout(() => {
+      const container = this.messagesContainer();
+      const element = document.getElementById(`message-${messageId}`);
+
+      if (!container || !element) {
+        return;
+      }
+
+      const containerEl = container.nativeElement;
+
+      // Se il container non è ancora pronto, riprova (max retry limit)
+      if (containerEl.clientHeight === 0) {
+        if (retryCount < this.MAX_SCROLL_RETRIES) {
+          setTimeout(() => this.scrollToMessage(messageId, instant, retryCount + 1), this.SCROLL_RETRY_DELAY);
+        }
+        return;
+      }
+
+      // Trova tutti i messaggi e calcola la posizione
+      const allMessages = containerEl.querySelectorAll('[id^="message-"]');
+      let targetOffset = 0;
+
+      for (const msg of allMessages) {
+        const msgEl = msg as HTMLElement;
+        if (msgEl.id === `message-${messageId}`) {
+          break;
+        }
+        targetOffset += msgEl.offsetHeight + this.MESSAGE_SPACING;
+      }
+
+      const containerHeight = containerEl.clientHeight;
+      const elementHeight = element.offsetHeight;
+
+      // Centra l'elemento nel container
+      const scrollTo = targetOffset - (containerHeight / 2) + (elementHeight / 2);
+
+      containerEl.scrollTo({
+        top: Math.max(0, scrollTo),
+        behavior: instant ? 'instant' : 'smooth'
+      });
+    }, instant ? 0 : this.SCROLL_DELAY);
   }
 
   trackByMessageId(index: number, message: MessageResponseDTO): number {
     return message.id;
+  }
+
+  /**
+   * Evidenzia il termine di ricerca nel testo del messaggio
+   */
+  getHighlightedContent(message: MessageResponseDTO): string {
+    const content = message.contenuto;
+    if (!content) return '';
+
+    const term = this.highlightTerm();
+    const isHighlighted = this.highlightedMessageId() === message.id;
+
+    if (!term || !isHighlighted) return content;
+
+    const regex = new RegExp(`(${this.escapeRegex(term)})`, 'gi');
+    return content.replace(regex, '<mark class="bg-yellow-400 text-gray-900 rounded px-0.5">$1</mark>');
+  }
+
+  private escapeRegex(string: string): string {
+    return string.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
   }
 
   /**
@@ -395,8 +540,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             })
           );
         },
-        error: (err) => {
-          console.error('Errore eliminazione/nascondimento messaggio:', err);
+        error: () => {
+          // Ignora errori eliminazione
         },
       });
   }
@@ -453,7 +598,6 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.isUploadingImage.set(false);
       },
       error: (err) => {
-        console.error('Errore upload immagine:', err);
         this.toastService.error(err.message || "Errore durante l'upload dell'immagine");
         this.clearImagePreview();
         this.isUploadingImage.set(false);

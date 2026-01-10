@@ -13,6 +13,7 @@ import { DialogService } from '../../../../core/services/dialog-service';
 import { ToastService } from '../../../../core/services/toast-service';
 import { WebsocketService } from '../../../../core/services/websocket-service';
 import { AuthStore } from '../../../../core/stores/auth-store';
+import { LoggerService } from '../../../../core/services/logger.service';
 
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar-component/avatar-component';
 import { DropdownComponent } from '../../../../shared/ui/dropdown/dropdown-component/dropdown-component';
@@ -50,6 +51,7 @@ export class PostDetailComponent implements OnInit, OnDestroy {
   private readonly toastService = inject(ToastService);
   private readonly websocketService = inject(WebsocketService);
   private readonly authStore = inject(AuthStore);
+  private readonly logger = inject(LoggerService);
 
   private readonly subscriptions: Subscription[] = [];
 
@@ -162,7 +164,7 @@ export class PostDetailComponent implements OnInit, OnDestroy {
         this.isLoading.set(false);
       },
       error: (err) => {
-        console.error('Errore caricamento post:', err);
+        this.logger.error('Errore caricamento post', err);
         this.error.set('Impossibile caricare il post');
         this.isLoading.set(false);
       }
@@ -196,8 +198,8 @@ export class PostDetailComponent implements OnInit, OnDestroy {
 
     // Post eliminato
     this.subscriptions.push(
-      this.websocketService.postDeleted$.subscribe((deletedPostId) => {
-        if (deletedPostId === postId) {
+      this.websocketService.postDeleted$.subscribe((event) => {
+        if (event.postId === postId) {
           this.toastService.warning('Il post è stato eliminato');
           this.goBack();
         }
@@ -305,7 +307,7 @@ export class PostDetailComponent implements OnInit, OnDestroy {
         this.isLiking.set(false);
       },
       error: (err) => {
-        console.error('Errore toggle like:', err);
+        this.logger.error('Errore toggle like', err);
         // Rollback
         this.localHasLiked.set(wasLiked);
         this.localLikesCount.update(count => wasLiked ? count + 1 : count - 1);
@@ -343,7 +345,7 @@ export class PostDetailComponent implements OnInit, OnDestroy {
         this.isLoadingLikes.set(false);
       },
       error: (err) => {
-        console.error('Errore caricamento likes:', err);
+        this.logger.error('Errore caricamento likes', err);
         this.isLoadingLikes.set(false);
         this.toastService.error('Errore nel caricamento degli utenti');
       }
@@ -390,7 +392,7 @@ export class PostDetailComponent implements OnInit, OnDestroy {
         this.toastService.success('Post modificato');
       },
       error: (err) => {
-        console.error('Errore modifica post:', err);
+        this.logger.error('Errore modifica post', err);
         this.isSaving.set(false);
         this.toastService.error('Errore durante la modifica');
       }
@@ -418,7 +420,7 @@ export class PostDetailComponent implements OnInit, OnDestroy {
         this.goBack();
       },
       error: (err) => {
-        console.error('Errore eliminazione post:', err);
+        this.logger.error('Errore eliminazione post', err);
         this.toastService.error('Errore durante l\'eliminazione');
       }
     });
@@ -569,7 +571,7 @@ export class PostDetailComponent implements OnInit, OnDestroy {
           url: url,
         });
       } catch (err) {
-        console.error('Errore condivisione:', err);
+        this.logger.error('Errore condivisione', err);
       }
     } else {
       // Fallback: copia negli appunti

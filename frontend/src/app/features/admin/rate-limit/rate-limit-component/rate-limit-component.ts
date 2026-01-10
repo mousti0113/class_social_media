@@ -20,6 +20,7 @@ import { AdminService, RateLimitType, UserTokensResponse, RateLimitStatsResponse
 import { ToastService } from '../../../../core/services/toast-service';
 import { DialogService } from '../../../../core/services/dialog-service';
 import { ButtonComponent } from '../../../../shared/ui/button/button-component/button-component';
+import { LoggerService } from '../../../../core/services/logger.service';
 
 @Component({
   selector: 'app-rate-limit-component',
@@ -38,6 +39,7 @@ export class RateLimitComponent implements OnInit, OnDestroy {
   private readonly toastService = inject(ToastService);
   private readonly dialogService = inject(DialogService);
   private readonly destroy$ = new Subject<void>();
+  private readonly logger = inject(LoggerService);
 
   // Icone
   readonly ArrowLeftIcon = ArrowLeft;
@@ -102,7 +104,7 @@ export class RateLimitComponent implements OnInit, OnDestroy {
           this.stats.set(data);
         },
         error: (error) => {
-          console.error('Errore nel caricamento delle statistiche:', error);
+          this.logger.error('Errore nel caricamento delle statistiche', error);
           this.hasStatsError.set(true);
           this.toastService.error('Errore nel caricamento delle statistiche');
         },
@@ -139,7 +141,7 @@ export class RateLimitComponent implements OnInit, OnDestroy {
           this.loadStats();
         },
         error: (error) => {
-          console.error('Errore nel reset:', error);
+          this.logger.error('Errore nel reset', error);
           this.toastService.error(error.error?.message || 'Errore nel reset del rate limit');
         },
       });
@@ -166,7 +168,7 @@ export class RateLimitComponent implements OnInit, OnDestroy {
           this.tokenInfo.set(data);
         },
         error: (error) => {
-          console.error('Errore nel controllo token:', error);
+          this.logger.error('Errore nel controllo token', error);
           this.toastService.error(error.error?.message || 'Errore nel controllo dei token');
           this.tokenInfo.set(null);
         },

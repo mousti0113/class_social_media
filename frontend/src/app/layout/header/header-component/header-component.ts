@@ -9,6 +9,7 @@ import { OnlineUsersStore } from '../../../core/stores/online-users-store';
 import { AuthService } from '../../../core/auth/services/auth-service';
 import { WebsocketService } from '../../../core/services/websocket-service';
 import { DialogService } from '../../../core/services/dialog-service';
+import { LoggerService } from '../../../core/services/logger.service';
 
 import { AvatarComponent } from '../../../shared/ui/avatar/avatar-component/avatar-component';
 import { SearchDropdownComponent } from '../../../shared/components/search-dropdown/search-dropdown-component/search-dropdown-component';
@@ -34,6 +35,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   private readonly websocketService = inject(WebsocketService);
   private readonly dialogService = inject(DialogService);
   private readonly elementRef = inject(ElementRef);
+  private readonly logger = inject(LoggerService);
 
   // Icone Lucide
   readonly BellIcon = Bell;
@@ -221,7 +223,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
         this.router.navigate(['/auth/login']);
       },
       error: (error) => {
-        console.error('Errore durante il logout:', error);
+        this.logger.error('Errore durante il logout', error);
         // Naviga comunque al login
         this.router.navigate(['/auth/login']);
       }

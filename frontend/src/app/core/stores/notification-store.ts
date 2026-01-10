@@ -4,6 +4,7 @@ import { WebsocketService } from '../services/websocket-service';
 import { NotificationResponseDTO } from '../../models';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
+import { LoggerService } from '../services/logger.service';
 
 @Injectable({
   providedIn: 'root',
@@ -11,6 +12,7 @@ import { firstValueFrom } from 'rxjs';
 export class NotificationStore {
   private readonly notificationService = inject(NotificationService);
   private readonly websocketService = inject(WebsocketService);
+  private readonly logger = inject(LoggerService);
 
   // ============================================================================
   // SIGNALS PRIVATI
@@ -95,7 +97,7 @@ export class NotificationStore {
       this._currentPage.set(page);
       this._hasMore.set(!response.last);
     } catch (error) {
-      console.error('Errore caricamento notifiche:', error);
+      this.logger.error('Errore caricamento notifiche', error);
     } finally {
       this._loading.set(false);
     }
@@ -125,7 +127,7 @@ export class NotificationStore {
         this._hasMore.set(false); // Non ha paginazione
       }
     } catch (error) {
-      console.error('Errore caricamento notifiche non lette:', error);
+      this.logger.error('Errore caricamento notifiche non lette', error);
     } finally {
       this._loading.set(false);
     }
@@ -151,7 +153,7 @@ export class NotificationStore {
         });
       }
     } catch (error) {
-      console.error('Errore caricamento notifiche recenti:', error);
+      this.logger.error('Errore caricamento notifiche recenti', error);
     }
   }
 
@@ -166,7 +168,7 @@ export class NotificationStore {
         this._unreadCount.set(response.unreadCount);
       }
     } catch (error) {
-      console.error('Errore caricamento conteggio non lette:', error);
+      this.logger.error('Errore caricamento conteggio non lette', error);
     }
   }
 
@@ -193,7 +195,7 @@ export class NotificationStore {
       // Decrementa il conteggio non lette
       this._unreadCount.update(count => Math.max(0, count - 1));
     } catch (error) {
-      console.error('Errore marcatura notifica come letta:', error);
+      this.logger.error('Errore marcatura notifica come letta', error);
       throw error;
     }
   }
@@ -213,7 +215,7 @@ export class NotificationStore {
       // Azzera il conteggio
       this._unreadCount.set(0);
     } catch (error) {
-      console.error('Errore marcatura tutte come lette:', error);
+      this.logger.error('Errore marcatura tutte come lette', error);
       throw error;
     }
   }
@@ -241,7 +243,7 @@ export class NotificationStore {
         this._unreadCount.update(count => Math.max(0, count - 1));
       }
     } catch (error) {
-      console.error('Errore eliminazione notifica:', error);
+      this.logger.error('Errore eliminazione notifica', error);
       throw error;
     }
   }
@@ -258,7 +260,7 @@ export class NotificationStore {
         notifications.filter(n => !n.isRead)
       );
     } catch (error) {
-      console.error('Errore eliminazione notifiche lette:', error);
+      this.logger.error('Errore eliminazione notifiche lette', error);
       throw error;
     }
   }

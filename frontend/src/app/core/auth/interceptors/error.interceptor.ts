@@ -5,6 +5,7 @@ import { AuthService } from '../services/auth-service';
 import { TokenService } from '../services/token-service';
 import { ToastService } from '../../services/toast-service';
 import { OnlineUsersStore } from '../../stores/online-users-store';
+import { LoggerService } from '../../services/logger.service';
 
 /**
  * Interceptor per gestire errori HTTP e refresh token automatico
@@ -29,47 +30,48 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const tokenService = inject(TokenService);
   const toastService = inject(ToastService);
   const onlineUsersStore = inject(OnlineUsersStore);
+  const logger = inject(LoggerService);
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
       // Gestisce errori di rete (timeout, no connection)
       if (error.status === 0) {
-        return handleNetworkError(error, toastService);
+        return handleNetworkError(error, toastService, logger);
       }
 
       // Gestisce errori 400 Bad Request
       if (error.status === 400) {
-        return handle400Error(error, toastService);
+        return handle400Error(error, toastService, logger);
       }
 
       // Gestisce errori 401 Unauthorized
       if (error.status === 401) {
-        return handle401Error(req, next, authService, tokenService, toastService, onlineUsersStore);
+        return handle401Error(req, next, authService, tokenService, toastService, onlineUsersStore, logger);
       }
 
       // Gestisce errori 403 Forbidden
       if (error.status === 403) {
-        return handle403Error(error, toastService);
+        return handle403Error(error, toastService, logger);
       }
 
       // Gestisce errori 404 Not Found
       if (error.status === 404) {
-        return handle404Error(error, toastService);
+        return handle404Error(error, toastService, logger);
       }
 
       // Gestisce errori 429 Too Many Requests
       if (error.status === 429) {
-        return handle429Error(error, toastService);
+        return handle429Error(error, toastService, logger);
       }
 
       // Gestisce errori 5xx Server Error
       if (error.status >= 500) {
-        return handle5xxError(error, toastService);
+        return handle5xxError(error, toastService, logger);
       }
 
       // Per tutti gli altri errori 4xx, mostra toast generico
       if (error.status >= 400 && error.status < 500) {
-        return handleGeneric4xxError(error, toastService);
+        return handleGeneric4xxError(error, toastService, logger);
       }
 
       // Per tutti gli altri errori, propagali senza toast
@@ -81,28 +83,28 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 /**
  * Gestisce errori di rete (timeout, no connection)
  */
-function handleNetworkError(error: HttpErrorResponse, toastService: ToastService) {
-  console.error('Errore di rete:', error);
-  
+function handleNetworkError(error: HttpErrorResponse, toastService: ToastService, logger: LoggerService) {
+  logger.error('Errore di rete', error);
+
   toastService.error(
     'Impossibile connettersi al server. Verifica la tua connessione internet.',
     { duration: 8000 }
   );
-  
+
   return throwError(() => new Error('Errore di connessione'));
 }
 
 /**
  * Gestisce errore 400 Bad Request
  */
-function handle400Error(error: HttpErrorResponse, toastService: ToastService) {
-  console.error('Richiesta non valida:', error);
-  
+function handle400Error(error: HttpErrorResponse, toastService: ToastService, logger: LoggerService) {
+  logger.error('Richiesta non valida', error);
+
   // Estrae il messaggio di errore dal backend se disponibile
   const errorMessage = extractErrorMessage(error) || 'I dati inseriti non sono validi.';
-  
+
   toastService.error(errorMessage, { duration: 6000 });
-  
+
   return throwError(() => error);
 }
 
@@ -115,7 +117,8 @@ function handle401Error(
   authService: AuthService,
   tokenService: TokenService,
   toastService: ToastService,
-  onlineUsersStore: OnlineUsersStore
+  onlineUsersStore: OnlineUsersStore,
+  logger: LoggerService
 ) {
   // Non tentare refresh se siamo già sulla chiamata di refresh, logout o su endpoint pubblici
   if (
@@ -151,13 +154,13 @@ function handle401Error(
       // Refresh fallito, pulisci i token localmente (senza chiamare il backend per evitare loop)
       tokenService.clearTokens();
       onlineUsersStore.stopPolling();
-      
-      console.error('Errore refresh token:', refreshError);
+
+      logger.error('Errore refresh token', refreshError);
       toastService.warning(
         'La tua sessione è scaduta. Effettua nuovamente il login.',
         { duration: 7000 }
       );
-      
+
       return throwError(() => new Error('Sessione scaduta'));
     })
   );
@@ -166,70 +169,70 @@ function handle401Error(
 /**
  * Gestisce errore 403 Forbidden
  */
-function handle403Error(error: HttpErrorResponse, toastService: ToastService) {
-  console.error('Accesso negato:', error);
-  
+function handle403Error(error: HttpErrorResponse, toastService: ToastService, logger: LoggerService) {
+  logger.error('Accesso negato', error);
+
   const errorMessage = extractErrorMessage(error) || 'Non hai i permessi per eseguire questa operazione.';
-  
+
   toastService.error(errorMessage, { duration: 6000 });
-  
+
   return throwError(() => error);
 }
 
 /**
  * Gestisce errore 404 Not Found
  */
-function handle404Error(error: HttpErrorResponse, toastService: ToastService) {
-  console.error('Risorsa non trovata:', error);
-  
+function handle404Error(error: HttpErrorResponse, toastService: ToastService, logger: LoggerService) {
+  logger.error('Risorsa non trovata', error);
+
   // Mostra toast solo per endpoint API, non per assets/immagini
   if (error.url && error.url.includes('/api/')) {
     const errorMessage = extractErrorMessage(error) || 'La risorsa richiesta non è stata trovata.';
     toastService.warning(errorMessage, { duration: 5000 });
   }
-  
+
   return throwError(() => error);
 }
 
 /**
  * Gestisce errore 429 Too Many Requests (Rate Limit)
  */
-function handle429Error(error: HttpErrorResponse, toastService: ToastService) {
-  console.error('Rate limit superato:', error);
-  
-  const errorMessage = extractErrorMessage(error) || 
+function handle429Error(error: HttpErrorResponse, toastService: ToastService, logger: LoggerService) {
+  logger.error('Rate limit superato', error);
+
+  const errorMessage = extractErrorMessage(error) ||
     'Hai effettuato troppe richieste. Riprova tra qualche istante.';
-  
+
   toastService.warning(errorMessage, { duration: 7000 });
-  
+
   return throwError(() => error);
 }
 
 /**
  * Gestisce errori 5xx Server Error
  */
-function handle5xxError(error: HttpErrorResponse, toastService: ToastService) {
-  console.error('Errore server:', error);
-  
-  const errorMessage = extractErrorMessage(error) || 
+function handle5xxError(error: HttpErrorResponse, toastService: ToastService, logger: LoggerService) {
+  logger.error('Errore server', error);
+
+  const errorMessage = extractErrorMessage(error) ||
     'Si è verificato un errore del server. Riprova più tardi.';
-  
+
   toastService.error(errorMessage, { duration: 7000 });
-  
+
   return throwError(() => error);
 }
 
 /**
  * Gestisce altri errori 4xx generici
  */
-function handleGeneric4xxError(error: HttpErrorResponse, toastService: ToastService) {
-  console.error(`Errore ${error.status}:`, error);
-  
-  const errorMessage = extractErrorMessage(error) || 
+function handleGeneric4xxError(error: HttpErrorResponse, toastService: ToastService, logger: LoggerService) {
+  logger.error(`Errore ${error.status}`, error);
+
+  const errorMessage = extractErrorMessage(error) ||
     'Si è verificato un errore durante l\'elaborazione della richiesta.';
-  
+
   toastService.error(errorMessage, { duration: 6000 });
-  
+
   return throwError(() => error);
 }
 

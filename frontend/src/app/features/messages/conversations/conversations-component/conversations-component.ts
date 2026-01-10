@@ -14,6 +14,7 @@ import { ConversationItemComponent } from '../../../../shared/components/convers
 import { SkeletonComponent } from '../../../../shared/ui/skeleton/skeleton-component/skeleton-component';
 import { AvatarComponent } from '../../../../shared/ui/avatar/avatar-component/avatar-component';
 import { TimeAgoPipe } from '../../../../shared/pipes/time-ago.pipe';
+import { POLLING_INTERVALS, TIMEOUTS, LIMITS } from '../../../../core/config/app.config';
 
 /**
  * Lista delle conversazioni dell'utente.
@@ -66,8 +67,8 @@ export class ConversationsComponent implements OnInit, OnDestroy {
   readonly isSearching = signal(false);
   readonly isSearchMode = computed(() => this.searchQuery().trim().length > 0);
 
-  // Polling interval (5 secondi)
-  private readonly POLLING_INTERVAL = 5000;
+  // Usa costanti centralizzate da app.config.ts
+  private readonly POLLING_INTERVAL = POLLING_INTERVALS.CONVERSATIONS;
 
   // Computed - filtra per ricerca (solo conversazioni, non messaggi)
   readonly filteredConversations = computed(() => {
@@ -112,9 +113,9 @@ export class ConversationsComponent implements OnInit, OnDestroy {
    */
   private setupSearchDebounce(): void {
     const searchSub = this.searchSubject.pipe(
-      debounceTime(300),
+      debounceTime(TIMEOUTS.SEARCH_DEBOUNCE),
       distinctUntilChanged(),
-      filter(query => query.trim().length >= 2)
+      filter(query => query.trim().length >= LIMITS.MIN_SEARCH_LENGTH)
     ).subscribe(query => {
       this.performSearch(query);
     });
@@ -131,8 +132,7 @@ export class ConversationsComponent implements OnInit, OnDestroy {
         this.searchResults.set(results);
         this.isSearching.set(false);
       },
-      error: (err) => {
-        console.error('Errore ricerca messaggi:', err);
+      error: () => {
         this.searchResults.set([]);
         this.isSearching.set(false);
       },
@@ -157,8 +157,7 @@ export class ConversationsComponent implements OnInit, OnDestroy {
           const userIds = response.content.map(conv => conv.altroUtente.id);
           this.typingStore.setMonitoredUsers(userIds);
         },
-        error: (err) => {
-          console.error('Errore caricamento conversazioni:', err);
+        error: () => {
           if (this.isLoading()) {
             this.error.set('Impossibile caricare le conversazioni');
             this.isLoading.set(false);
@@ -192,11 +191,17 @@ export class ConversationsComponent implements OnInit, OnDestroy {
    */
   onSearchResultClick(message: MessageResponseDTO): void {
     // Determina l'altro utente (mittente o destinatario)
-    const otherId = message.mittente.id;
+    const currentUserId = this.authStore.userId();
+    const otherId = message.mittente.id === currentUserId
+      ? message.destinatario.id
+      : message.mittente.id;
     this.selectedUserId.set(otherId);
-    // Naviga alla chat con l'ID del messaggio come query param
+    // Naviga alla chat con l'ID del messaggio e la query di ricerca
     this.router.navigate(['/messages', otherId], {
-      queryParams: { messageId: message.id }
+      queryParams: {
+        messageId: message.id,
+        highlight: this.searchQuery()
+      }
     });
   }
 
@@ -211,8 +216,7 @@ export class ConversationsComponent implements OnInit, OnDestroy {
         this.conversations.set(response.content);
         this.isLoading.set(false);
       },
-      error: (err) => {
-        console.error('Errore caricamento conversazioni:', err);
+      error: () => {
         this.error.set('Impossibile caricare le conversazioni');
         this.isLoading.set(false);
       },
@@ -240,11 +244,11 @@ export class ConversationsComponent implements OnInit, OnDestroy {
   highlightText(text: string, searchTerm: string): string {
     if (!searchTerm || !text) return text;
     const regex = new RegExp(`(${this.escapeRegex(searchTerm)})`, 'gi');
-    return text.replace(regex, '<mark class="bg-yellow-500/30 text-white rounded px-0.5">$1</mark>');
+    return text.replace(regex, '<mark class="bg-blue-100 text-blue-900 dark:bg-blue-900/40 dark:text-blue-100 rounded px-1 font-medium">$1</mark>');
   }
 
   private escapeRegex(string: string): string {
-    return string.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return string.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
   }
 
   /**

@@ -28,6 +28,7 @@ import { AuthService } from '../../../core/auth/services/auth-service';
 import { ToastService } from '../../../core/services/toast-service';
 import { DialogService } from '../../../core/services/dialog-service';
 import { CloudinaryStorageService } from '../../../core/services/cloudinary-storage-service';
+import { LoggerService } from '../../../core/services/logger.service';
 import { AvatarComponent } from '../../../shared/ui/avatar/avatar-component/avatar-component';
 import { ButtonComponent } from '../../../shared/ui/button/button-component/button-component';
 import { AggiornaProfiloRequestDTO, CambiaPasswordRequestDTO, DisattivaAccountRequestDTO } from '../../../models';
@@ -58,6 +59,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   private readonly dialogService = inject(DialogService);
   private readonly cloudinaryService = inject(CloudinaryStorageService);
   private readonly destroy$ = new Subject<void>();
+  private readonly logger = inject(LoggerService);
 
   // Icone
   readonly ArrowLeftIcon = ArrowLeft;
@@ -272,7 +274,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
             this.toastService.success('Foto profilo rimossa. Salva per applicare le modifiche.');
           },
           error: (error) => {
-            console.error('Errore eliminazione immagine:', error);
+            this.logger.error('Errore eliminazione immagine', error);
             // Anche se l'eliminazione da Cloudinary fallisce, permetti di rimuovere l'URL
             this.profilePictureUrl.set(null);
             this.toastService.warning('Immagine rimossa dal profilo. Salva per applicare le modifiche.');

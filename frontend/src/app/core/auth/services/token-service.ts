@@ -1,11 +1,13 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { UserResponseDTO } from '../../../models';
+import { LoggerService } from '../../services/logger.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TokenService {
-   private readonly ACCESS_TOKEN_KEY = 'access_token';
+  private readonly logger = inject(LoggerService);
+  private readonly ACCESS_TOKEN_KEY = 'access_token';
   private readonly REFRESH_TOKEN_KEY = 'refresh_token';
 
   /**
@@ -78,9 +80,9 @@ export class TokenService {
         lastSeen: data.lastSeen || new Date().toISOString(),
         isOnline: true, // Assume online se ha token valido
       } as UserResponseDTO;
-      
+
     } catch (error) {
-      console.error('Errore nella decodifica del token:', error);
+      this.logger.error('Errore nella decodifica del token', error);
       return null;
     }
   }

@@ -4,6 +4,7 @@ import { UserSummaryDTO } from '../../models';
 import { interval, Subscription, firstValueFrom } from 'rxjs';
 import { TokenService } from '../auth/services/token-service';
 import { WebsocketService } from '../services/websocket-service';
+import { LoggerService } from '../services/logger.service';
 
 @Injectable({
   providedIn: 'root',
@@ -12,6 +13,7 @@ export class OnlineUsersStore {
   private readonly userService = inject(UserService);
   private readonly tokenService = inject(TokenService);
   private readonly websocketService = inject(WebsocketService);
+  private readonly logger = inject(LoggerService);
 
   // Intervallo di aggiornamento automatico (aumentato a 5 minuti perché usiamo WebSocket)
   private readonly REFRESH_INTERVAL = 300000; // 5 minuti
@@ -178,7 +180,7 @@ export class OnlineUsersStore {
       this._onlineUsers.set(onlineUsers);
       this._lastUpdate.set(new Date());
     } catch (error) {
-      console.error('Errore caricamento utenti online:', error);
+      this.logger.error('Errore caricamento utenti online', error);
     } finally {
       this._loading.set(false);
     }
@@ -200,7 +202,7 @@ export class OnlineUsersStore {
       this._lastUpdate.set(new Date());
     } catch (error) {
       // Errori silenti durante refresh automatico
-      console.warn('Errore refresh utenti online (silente):', error);
+      this.logger.debug('Errore refresh utenti online (silente)', error);
     }
   }
 

@@ -1,54 +1,62 @@
-import { Injectable, signal, inject } from '@angular/core';
+import { Injectable, signal, inject, OnDestroy } from '@angular/core';
 import { environment } from '../../../environments/environment';
-import { Subject } from 'rxjs';
-import { Client, IMessage } from '@stomp/stompjs';
+import { Subject, Subscription } from 'rxjs';
+import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { TokenService } from '../auth/services/token-service';
+import { LoggerService } from './logger.service';
+import { WEBSOCKET_CONFIG } from '../config/app.config';
+import {
+  NotificationResponseDTO,
+  MessageResponseDTO,
+  PostResponseDTO,
+  CommentResponseDTO
+} from '../../models';
 
 @Injectable({
   providedIn: 'root',
 })
-export class WebsocketService {
+export class WebsocketService implements OnDestroy {
   private readonly tokenService = inject(TokenService);
+  private readonly logger = inject(LoggerService);
 
   private client: Client | null = null;
   private reconnectAttempts = 0;
-  private readonly maxReconnectAttempts = 5;
-  private readonly reconnectDelay = 3000; // 3 secondi
+  private reconnectTimeoutId?: number;
 
   // Signal per lo stato della connessione
   public readonly connected = signal<boolean>(false);
 
-  // Subjects per i vari tipi di messaggi in arrivo
-  private readonly notificationsSubject = new Subject<any>();
-  private readonly messagesSubject = new Subject<any>();
+  // Subjects per i vari tipi di messaggi in arrivo (type-safe)
+  private readonly notificationsSubject = new Subject<NotificationResponseDTO>();
+  private readonly messagesSubject = new Subject<MessageResponseDTO>();
   private readonly typingSubject = new Subject<TypingIndicator>();
   private readonly errorsSubject = new Subject<WebSocketError>();
-  private readonly announcementsSubject = new Subject<any>();
-  private readonly newPostsSubject = new Subject<any>();
-  private readonly postUpdatedSubject = new Subject<any>();
-  private readonly postDeletedSubject = new Subject<any>();
+  private readonly announcementsSubject = new Subject<Announcement>();
+  private readonly newPostsSubject = new Subject<PostResponseDTO>();
+  private readonly postUpdatedSubject = new Subject<PostResponseDTO>();
+  private readonly postDeletedSubject = new Subject<PostDeletedEvent>();
   private readonly postLikedSubject = new Subject<PostLikeUpdate>();
   private readonly commentUpdatesSubject = new Subject<CommentUpdate>();
   private readonly commentsCountSubject = new Subject<CommentsCountUpdate>();
   private readonly userPresenceSubject = new Subject<UserPresenceEvent>();
 
   // Observables pubblici per sottoscrizioni
-  public notifications$ = this.notificationsSubject.asObservable();
-  public messages$ = this.messagesSubject.asObservable();
-  public typing$ = this.typingSubject.asObservable();
-  public errors$ = this.errorsSubject.asObservable();
-  public announcements$ = this.announcementsSubject.asObservable();
-  public newPosts$ = this.newPostsSubject.asObservable();
-  public postUpdated$ = this.postUpdatedSubject.asObservable();
-  public postDeleted$ = this.postDeletedSubject.asObservable();
-  public postLiked$ = this.postLikedSubject.asObservable();
-  public commentUpdates$ = this.commentUpdatesSubject.asObservable();
-  public commentsCount$ = this.commentsCountSubject.asObservable();
-  public userPresence$ = this.userPresenceSubject.asObservable();
+  public readonly notifications$ = this.notificationsSubject.asObservable();
+  public readonly messages$ = this.messagesSubject.asObservable();
+  public readonly typing$ = this.typingSubject.asObservable();
+  public readonly errors$ = this.errorsSubject.asObservable();
+  public readonly announcements$ = this.announcementsSubject.asObservable();
+  public readonly newPosts$ = this.newPostsSubject.asObservable();
+  public readonly postUpdated$ = this.postUpdatedSubject.asObservable();
+  public readonly postDeleted$ = this.postDeletedSubject.asObservable();
+  public readonly postLiked$ = this.postLikedSubject.asObservable();
+  public readonly commentUpdates$ = this.commentUpdatesSubject.asObservable();
+  public readonly commentsCount$ = this.commentsCountSubject.asObservable();
+  public readonly userPresence$ = this.userPresenceSubject.asObservable();
 
   // Mappa per tenere traccia delle sottoscrizioni ai commenti per post
-  private commentSubscriptions = new Map<number, any>();
+  private commentSubscriptions = new Map<number, StompSubscription>();
 
   /**
    * Connette al WebSocket server
@@ -60,14 +68,17 @@ export class WebsocketService {
    */
   connect(): void {
     if (this.client?.connected) {
+      this.logger.debug('[WebSocket] Già connesso');
       return;
     }
 
     const token = this.tokenService.getAccessToken();
     if (!token) {
-      console.error('[WebSocket] Token non disponibile, impossibile connettersi');
+      this.logger.error('[WebSocket] Token non disponibile, impossibile connettersi');
       return;
     }
+
+    this.logger.info('[WebSocket] Inizializzazione connessione...');
 
     this.client = new Client({
       // Usa SockJS come trasporto (fallback per browser senza WebSocket nativo)
@@ -80,15 +91,15 @@ export class WebsocketService {
 
       // Debug (disabilita in produzione)
       debug: (str) => {
-        // Debug logging disabled in production
+        this.logger.debug('[WebSocket STOMP]', str);
       },
 
       // Heartbeat per mantenere la connessione attiva
-      heartbeatIncoming: 10000, // 10 secondi
-      heartbeatOutgoing: 10000,
+      heartbeatIncoming: WEBSOCKET_CONFIG.HEARTBEAT_INCOMING,
+      heartbeatOutgoing: WEBSOCKET_CONFIG.HEARTBEAT_OUTGOING,
 
-      // Riconnessione automatica
-      reconnectDelay: this.reconnectDelay,
+      // Riconnessione automatica disabilitata (gestita manualmente per exponential backoff)
+      reconnectDelay: 0,
 
       // Callback successo connessione
       onConnect: () => {
@@ -108,6 +119,7 @@ export class WebsocketService {
       // Callback cambio stato WebSocket
       onWebSocketClose: () => {
         this.connected.set(false);
+        this.scheduleReconnect();
       },
     });
 
@@ -119,6 +131,18 @@ export class WebsocketService {
    * Disconnette dal WebSocket server
    */
   disconnect(): void {
+    this.logger.info('[WebSocket] Disconnessione...');
+
+    // Cancella eventuali tentativi di riconnessione pendenti
+    if (this.reconnectTimeoutId) {
+      clearTimeout(this.reconnectTimeoutId);
+      this.reconnectTimeoutId = undefined;
+    }
+
+    // Cancella tutte le sottoscrizioni ai commenti
+    this.commentSubscriptions.forEach((sub) => sub.unsubscribe());
+    this.commentSubscriptions.clear();
+
     if (this.client) {
       this.client.deactivate();
       this.client = null;
@@ -126,10 +150,15 @@ export class WebsocketService {
     }
   }
 
+  ngOnDestroy(): void {
+    this.disconnect();
+  }
+
   /**
    * Callback chiamato quando la connessione è stabilita
    */
   private onConnected(): void {
+    this.logger.info('[WebSocket] Connessione stabilita');
     this.connected.set(true);
     this.reconnectAttempts = 0;
 
@@ -140,20 +169,68 @@ export class WebsocketService {
   /**
    * Callback chiamato quando si verifica un errore
    */
-  private onError(frame: any): void {
+  private onError(frame: unknown): void {
+    this.logger.error('[WebSocket] Errore STOMP', frame);
     this.connected.set(false);
-
-    // Tentativo di riconnessione
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-    }
+    this.scheduleReconnect();
   }
 
   /**
    * Callback chiamato quando la connessione viene chiusa
    */
   private onDisconnected(): void {
+    this.logger.warn('[WebSocket] Disconnesso');
     this.connected.set(false);
+  }
+
+  /**
+   * Pianifica un tentativo di riconnessione con exponential backoff
+   */
+  private scheduleReconnect(): void {
+    if (this.reconnectAttempts >= WEBSOCKET_CONFIG.MAX_RECONNECT_ATTEMPTS) {
+      this.logger.error('[WebSocket] Raggiunto numero massimo di tentativi di riconnessione');
+      return;
+    }
+
+    // Cancella timeout precedente se esiste
+    if (this.reconnectTimeoutId) {
+      clearTimeout(this.reconnectTimeoutId);
+    }
+
+    // Calcola delay con exponential backoff
+    const delay = Math.min(
+      WEBSOCKET_CONFIG.RECONNECT_DELAY_BASE *
+      Math.pow(WEBSOCKET_CONFIG.RECONNECT_BACKOFF_MULTIPLIER, this.reconnectAttempts),
+      WEBSOCKET_CONFIG.RECONNECT_DELAY_MAX
+    );
+
+    this.reconnectAttempts++;
+    this.logger.info(`[WebSocket] Tentativo riconnessione ${this.reconnectAttempts}/${WEBSOCKET_CONFIG.MAX_RECONNECT_ATTEMPTS} tra ${delay}ms`);
+
+    this.reconnectTimeoutId = window.setTimeout(() => {
+      this.connect();
+    }, delay);
+  }
+
+  /**
+   * Sottoscrive a un canale WebSocket
+   */
+  private subscribeToChannel<T>(
+    destination: string,
+    subject: Subject<T>,
+    parser?: (data: unknown) => T
+  ): void {
+    if (!this.client) return;
+
+    this.client.subscribe(destination, (message: IMessage) => {
+      try {
+        const data = JSON.parse(message.body);
+        const parsedData = parser ? parser(data) : (data as T);
+        subject.next(parsedData);
+      } catch (error) {
+        this.logger.error(`[WebSocket] Errore parsing messaggio da ${destination}`, error);
+      }
+    });
   }
 
   /**
@@ -162,72 +239,48 @@ export class WebsocketService {
   private subscribeToChannels(): void {
     if (!this.client) return;
 
+    this.logger.debug('[WebSocket] Sottoscrizione ai canali...');
+
     // Sottoscrizione alle notifiche personali
-    this.client.subscribe('/user/queue/notifications', (message: IMessage) => {
-      const notification = JSON.parse(message.body);
-      this.notificationsSubject.next(notification);
-    });
+    this.subscribeToChannel('/user/queue/notifications', this.notificationsSubject);
 
     // Sottoscrizione ai messaggi diretti
-    this.client.subscribe('/user/queue/messages', (message: IMessage) => {
-      const msg = JSON.parse(message.body);
-      this.messagesSubject.next(msg);
-    });
+    this.subscribeToChannel('/user/queue/messages', this.messagesSubject);
 
     // Sottoscrizione agli indicatori di digitazione
-    this.client.subscribe('/user/queue/typing', (message: IMessage) => {
-      const typing = JSON.parse(message.body);
-      this.typingSubject.next(typing);
-    });
+    this.subscribeToChannel('/user/queue/typing', this.typingSubject);
 
     // Sottoscrizione agli errori
     this.client.subscribe('/user/queue/errors', (message: IMessage) => {
-      const error = JSON.parse(message.body);
-      console.error('[WebSocket] Errore ricevuto:', error);
-      this.errorsSubject.next(error);
+      try {
+        const error = JSON.parse(message.body) as WebSocketError;
+        this.logger.error('[WebSocket] Errore ricevuto dal server', error);
+        this.errorsSubject.next(error);
+      } catch (err) {
+        this.logger.error('[WebSocket] Errore parsing errore', err);
+      }
     });
 
     // Sottoscrizione agli annunci broadcast
-    this.client.subscribe('/topic/announcements', (message: IMessage) => {
-      const announcement = JSON.parse(message.body);
-      this.announcementsSubject.next(announcement);
-    });
+    this.subscribeToChannel('/topic/announcements', this.announcementsSubject);
 
     // Sottoscrizione ai nuovi post (broadcast a tutti gli utenti)
-    this.client.subscribe('/topic/posts', (message: IMessage) => {
-      const post = JSON.parse(message.body);
-      this.newPostsSubject.next(post);
-    });
+    this.subscribeToChannel('/topic/posts', this.newPostsSubject);
 
     // Sottoscrizione ai post aggiornati
-    this.client.subscribe('/topic/posts/updated', (message: IMessage) => {
-      const post = JSON.parse(message.body);
-      this.postUpdatedSubject.next(post);
-    });
+    this.subscribeToChannel('/topic/posts/updated', this.postUpdatedSubject);
 
     // Sottoscrizione ai post cancellati
-    this.client.subscribe('/topic/posts/deleted', (message: IMessage) => {
-      const data = JSON.parse(message.body);
-      this.postDeletedSubject.next(data);
-    });
+    this.subscribeToChannel('/topic/posts/deleted', this.postDeletedSubject);
 
     // Sottoscrizione agli aggiornamenti like
-    this.client.subscribe('/topic/posts/liked', (message: IMessage) => {
-      const likeUpdate = JSON.parse(message.body);
-      this.postLikedSubject.next(likeUpdate);
-    });
+    this.subscribeToChannel('/topic/posts/liked', this.postLikedSubject);
 
     // Sottoscrizione agli aggiornamenti conteggio commenti (globale)
-    this.client.subscribe('/topic/posts/comments-count', (message: IMessage) => {
-      const countUpdate = JSON.parse(message.body);
-      this.commentsCountSubject.next(countUpdate);
-    });
+    this.subscribeToChannel('/topic/posts/comments-count', this.commentsCountSubject);
 
     // Sottoscrizione agli eventi di presenza utenti (online/offline)
-    this.client.subscribe('/topic/user-presence', (message: IMessage) => {
-      const presenceEvent = JSON.parse(message.body);
-      this.userPresenceSubject.next(presenceEvent);
-    });
+    this.subscribeToChannel('/topic/user-presence', this.userPresenceSubject);
   }
 
   /**
@@ -240,7 +293,7 @@ export class WebsocketService {
    */
   sendTestMessage(content: string, type?: string): void {
     if (!this.client?.connected) {
-      console.error('[WebSocket] Non connesso, impossibile inviare messaggio');
+      this.logger.error('[WebSocket] Non connesso, impossibile inviare messaggio');
       return;
     }
 
@@ -262,7 +315,7 @@ export class WebsocketService {
    */
   sendTypingIndicator(recipientUsername: string, isTyping: boolean): void {
     if (!this.client?.connected) {
-      console.warn('[WebSocket] Non connesso, impossibile inviare typing indicator');
+      this.logger.warn('[WebSocket] Non connesso, impossibile inviare typing indicator');
       return;
     }
 
@@ -282,24 +335,30 @@ export class WebsocketService {
    */
   subscribeToPostComments(postId: number): void {
     if (!this.client?.connected) {
-      console.warn('[WebSocket] Non connesso, impossibile sottoscrivere ai commenti');
+      this.logger.warn('[WebSocket] Non connesso, impossibile sottoscrivere ai commenti');
       return;
     }
 
     // Evita sottoscrizioni duplicate
     if (this.commentSubscriptions.has(postId)) {
+      this.logger.debug(`[WebSocket] Già sottoscritto ai commenti del post ${postId}`);
       return;
     }
 
     const subscription = this.client.subscribe(
       `/topic/posts/${postId}/comments`,
       (message: IMessage) => {
-        const update = JSON.parse(message.body);
-        this.commentUpdatesSubject.next(update);
+        try {
+          const update = JSON.parse(message.body) as CommentUpdate;
+          this.commentUpdatesSubject.next(update);
+        } catch (error) {
+          this.logger.error(`[WebSocket] Errore parsing update commenti post ${postId}`, error);
+        }
       }
     );
 
     this.commentSubscriptions.set(postId, subscription);
+    this.logger.debug(`[WebSocket] Sottoscritto ai commenti del post ${postId}`);
   }
 
   /**
@@ -312,6 +371,7 @@ export class WebsocketService {
     if (subscription) {
       subscription.unsubscribe();
       this.commentSubscriptions.delete(postId);
+      this.logger.debug(`[WebSocket] Cancellata sottoscrizione commenti post ${postId}`);
     }
   }
 
@@ -349,6 +409,34 @@ export interface WebSocketError {
 }
 
 /**
+ * Interfaccia per annunci broadcast
+ */
+export interface Announcement {
+  /** Titolo annuncio */
+  title: string;
+
+  /** Contenuto annuncio */
+  message: string;
+
+  /** Tipo annuncio */
+  type: 'info' | 'warning' | 'error' | 'success';
+
+  /** Timestamp */
+  timestamp: number;
+}
+
+/**
+ * Interfaccia per evento post cancellato
+ */
+export interface PostDeletedEvent {
+  /** ID del post cancellato */
+  postId: number;
+
+  /** Timestamp */
+  timestamp: number;
+}
+
+/**
  * Interfaccia per aggiornamenti like sui post
  */
 export interface PostLikeUpdate {
@@ -376,7 +464,7 @@ export interface CommentUpdate {
   type: 'comment_created' | 'comment_updated' | 'comment_deleted';
 
   /** Commento (presente per created e updated) */
-  comment?: any;
+  comment?: CommentResponseDTO;
 
   /** ID del commento (presente per deleted) */
   commentId?: number;

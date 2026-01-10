@@ -1,8 +1,8 @@
 export const environment = {
   production: true,
 
-  apiUrl: 'https://restaurant-reduces-referrals-burning.trycloudflare.com/api',
-  wsUrl: 'https://restaurant-reduces-referrals-burning.trycloudflare.com/ws',
+  apiUrl: 'https://yellow-eventually-costume-threaded.trycloudflare.com/api',
+  wsUrl: 'https://yellow-eventually-costume-threaded.trycloudflare.com/ws',
 
   // Cloudinary Storage Configuration
   cloudinary: {

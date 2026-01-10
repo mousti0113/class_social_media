@@ -332,8 +332,8 @@ export class SearchResultsComponent implements OnInit, OnDestroy {
     // Post eliminato
     this.websocketService.postDeleted$
       .pipe(takeUntil(this.destroy$))
-      .subscribe((deletedPostId) => {
-        this.posts.update(posts => posts.filter(p => p.id !== deletedPostId));
+      .subscribe((event) => {
+        this.posts.update(posts => posts.filter(p => p.id !== event.postId));
       });
 
     // Post modificato

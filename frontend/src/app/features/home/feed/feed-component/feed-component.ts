@@ -12,6 +12,7 @@ import { SidebarOnlineComponent } from '../../components/sidebar-online/sidebar-
 import { WebsocketService, PostLikeUpdate, CommentsCountUpdate } from '../../../../core/services/websocket-service';
 import { AuthService } from '../../../../core/auth/services/auth-service';
 import { OnlineUsersDrawerComponent } from '../../components/online-users-drawer/online-users-drawer-component/online-users-drawer-component';
+import { LoggerService } from '../../../../core/services/logger.service';
 
 @Component({
   selector: 'app-feed-component',
@@ -32,7 +33,8 @@ export class FeedComponent implements OnInit, OnDestroy {
   private readonly postService = inject(PostService);
   private readonly websocketService = inject(WebsocketService);
   private readonly authService = inject(AuthService);
-  
+  private readonly logger = inject(LoggerService);
+
   private newPostSubscription?: Subscription;
   private postUpdatedSubscription?: Subscription;
   private postDeletedSubscription?: Subscription;
@@ -97,7 +99,7 @@ export class FeedComponent implements OnInit, OnDestroy {
         }
       },
       error: (err) => {
-        console.error('[Feed] Errore sottoscrizione nuovi post:', err);
+        this.logger.error('[Feed] Errore sottoscrizione nuovi post', err);
       }
     });
   }
@@ -114,7 +116,7 @@ export class FeedComponent implements OnInit, OnDestroy {
         );
       },
       error: (err) => {
-        console.error('[Feed] Errore sottoscrizione post aggiornati:', err);
+        this.logger.error('[Feed] Errore sottoscrizione post aggiornati', err);
       }
     });
   }
@@ -129,7 +131,7 @@ export class FeedComponent implements OnInit, OnDestroy {
         this.posts.update(posts => posts.filter(p => p.id !== data.postId));
       },
       error: (err) => {
-        console.error('[Feed] Errore sottoscrizione post cancellati:', err);
+        this.logger.error('[Feed] Errore sottoscrizione post cancellati', err);
       }
     });
   }
@@ -151,7 +153,7 @@ export class FeedComponent implements OnInit, OnDestroy {
         );
       },
       error: (err) => {
-        console.error('[Feed] Errore sottoscrizione like:', err);
+        this.logger.error('[Feed] Errore sottoscrizione like', err);
       }
     });
   }
@@ -173,7 +175,7 @@ export class FeedComponent implements OnInit, OnDestroy {
         );
       },
       error: (err) => {
-        console.error('[Feed] Errore sottoscrizione conteggio commenti:', err);
+        this.logger.error('[Feed] Errore sottoscrizione conteggio commenti', err);
       }
     });
   }
@@ -195,7 +197,7 @@ export class FeedComponent implements OnInit, OnDestroy {
       error: (err) => {
         this.isLoading.set(false);
         this.error.set('Errore nel caricamento dei post. Riprova.');
-        console.error('Errore caricamento feed:', err);
+        this.logger.error('Errore caricamento feed', err);
       },
     });
   }
@@ -221,7 +223,7 @@ export class FeedComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.isLoadingMore.set(false);
-        console.error('Errore caricamento altri post:', err);
+        this.logger.error('Errore caricamento altri post', err);
       },
     });
   }

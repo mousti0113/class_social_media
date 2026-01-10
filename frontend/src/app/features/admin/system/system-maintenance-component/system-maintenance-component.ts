@@ -18,6 +18,7 @@ import { AdminService, CleanupResponse } from '../../../../core/api/admin-servic
 import { ToastService } from '../../../../core/services/toast-service';
 import { DialogService } from '../../../../core/services/dialog-service';
 import { ButtonComponent } from '../../../../shared/ui/button/button-component/button-component';
+import { LoggerService } from '../../../../core/services/logger.service';
 
 @Component({
   selector: 'app-system-maintenance-component',
@@ -36,6 +37,7 @@ export class SystemMaintenanceComponent implements OnDestroy {
   private readonly toastService = inject(ToastService);
   private readonly dialogService = inject(DialogService);
   private readonly destroy$ = new Subject<void>();
+  private readonly logger = inject(LoggerService);
 
   // Icone
   readonly ArrowLeftIcon = ArrowLeft;
@@ -83,7 +85,7 @@ export class SystemMaintenanceComponent implements OnDestroy {
           this.toastService.success(response.message || 'Pulizia completata con successo');
         },
         error: (error) => {
-          console.error('Errore nella pulizia:', error);
+          this.logger.error('Errore nella pulizia', error);
           this.toastService.error(error.error?.message || 'Errore durante la pulizia del database');
         },
       });

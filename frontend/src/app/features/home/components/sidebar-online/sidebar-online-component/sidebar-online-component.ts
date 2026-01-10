@@ -8,6 +8,7 @@ import { OnlineUsersStore } from '../../../../../core/stores/online-users-store'
 import { UserService } from '../../../../../core/api/user-service';
 import { AuthStore } from '../../../../../core/stores/auth-store';
 import { UserSummaryDTO } from '../../../../../models';
+import { LoggerService } from '../../../../../core/services/logger.service';
 
 @Component({
   selector: 'app-sidebar-online-component',
@@ -25,6 +26,7 @@ export class SidebarOnlineComponent implements OnInit {
   private readonly userService = inject(UserService);
   private readonly authStore = inject(AuthStore);
   private readonly router = inject(Router);
+  private readonly logger = inject(LoggerService);
 
   // Icone Lucide
   readonly MessageSquareIcon = MessageSquare;
@@ -54,7 +56,7 @@ export class SidebarOnlineComponent implements OnInit {
         this._loadedAllUsers.set(true);
       },
       error: (error) => {
-        console.error('Errore caricamento utenti:', error);
+        this.logger.error('Errore caricamento utenti', error);
       },
     });
   }
