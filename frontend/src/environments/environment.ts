@@ -1,8 +1,8 @@
 export const environment = {
   production: true,
 
-  apiUrl: 'https://television-friendly-def-cycling.trycloudflare.com/api',
-  wsUrl: 'https://television-friendly-def-cycling.trycloudflare.com/ws',
+  apiUrl: 'https://noticed-debian-perform-crossing.trycloudflare.com/api',
+  wsUrl: 'https://noticed-debian-perform-crossing.trycloudflare.com/ws',
 
   // Cloudinary Storage Configuration
   cloudinary: {
