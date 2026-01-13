@@ -1,8 +1,8 @@
 export const environment = {
   production: true,
 
-  apiUrl: 'https://noticed-debian-perform-crossing.trycloudflare.com/api',
-  wsUrl: 'https://noticed-debian-perform-crossing.trycloudflare.com/ws',
+  apiUrl: 'https://los-does-cult-leslie.trycloudflare.com/api',
+  wsUrl: 'https://los-does-cult-leslie.trycloudflare.com/ws',
 
   // Cloudinary Storage Configuration
   cloudinary: {
