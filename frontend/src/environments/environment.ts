@@ -1,8 +1,8 @@
 export const environment = {
   production: true,
 
-  apiUrl: 'https://los-does-cult-leslie.trycloudflare.com/api',
-  wsUrl: 'https://los-does-cult-leslie.trycloudflare.com/ws',
+  apiUrl: 'https://person-sky-resources-time.trycloudflare.com/api',
+  wsUrl: 'https://person-sky-resources-time.trycloudflare.com/ws',
 
   // Cloudinary Storage Configuration
   cloudinary: {
