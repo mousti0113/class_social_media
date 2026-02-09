@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, throwError } from 'rxjs';
+import { Observable, throwError, firstValueFrom } from 'rxjs';
 import { tap, catchError, shareReplay } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import {
@@ -204,8 +204,9 @@ export class AuthService {
   /**
    * Inizializza l'autenticazione al caricamento dell'app
    * Verifica se ci sono token salvati e se sono validi
+   * Se l'access token è scaduto ma il refresh token è presente, tenta il refresh automatico
    */
-  initAuth(): void {
+  async initAuth(): Promise<void> {
     const accessToken = this.tokenService.getAccessToken();
     const refreshToken = this.tokenService.getRefreshToken();
 
@@ -214,13 +215,31 @@ export class AuthService {
       const userFromToken = this.tokenService.getUserFromToken();
 
       if (userFromToken) {
-        // Aggiorna lo store con l'utente recuperato
+        // Token valido, ripristina la sessione
         this.authStore.setUser(userFromToken);
         // Connetti WebSocket se utente già loggato (reload pagina)
         this.websocketService.connect();
       } else {
-        // Token non valido, effettua logout
-        this.handleLogoutSuccess();
+        // Access token scaduto, tenta il refresh automatico
+        try {
+          this.logger.info('Access token scaduto, tentativo di refresh automatico...');
+          await firstValueFrom(this.refreshToken());
+
+          // Refresh riuscito, ora ripristina la sessione con il nuovo token
+          const newUserFromToken = this.tokenService.getUserFromToken();
+          if (newUserFromToken) {
+            this.authStore.setUser(newUserFromToken);
+            this.websocketService.connect();
+            this.logger.info('Sessione ripristinata con successo dopo refresh token');
+          } else {
+            // Nuovo token non valido (non dovrebbe mai succedere)
+            this.handleLogoutSuccess();
+          }
+        } catch {
+          // Refresh fallito, effettua logout
+          this.logger.warn('Refresh token fallito, sessione scaduta');
+          this.handleLogoutSuccess();
+        }
       }
     }
   }

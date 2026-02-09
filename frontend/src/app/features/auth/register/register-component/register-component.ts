@@ -37,11 +37,21 @@ export class RegisterComponent {
   readonly checkingUsername = signal<boolean>(false);
   readonly checkingEmail = signal<boolean>(false);
 
+  // Classi disponibili per la registrazione
+  readonly availableClassrooms = [
+    '1IA', '1IB', '1IC', '1ID',
+    '2IA', '2IB', '2IC', '2ID',
+    '3IA', '3IB', '3IC', '3ID',
+    '4IA', '4IB', '4IC', '4ID',
+    '5IA', '5IB', '5IC', '5ID',
+  ];
+
   // Form di registrazione
   readonly registerForm: FormGroup = this.fb.group({
     nomeCompleto: ['', [Validators.required, maxLengthValidator(100)]],
     username: ['', [Validators.required, usernameValidator()]],
     email: ['', [Validators.required, schoolEmailValidator()]],
+    classroom: ['', [Validators.required]],
     password: ['', [Validators.required, passwordValidator()]],
     confirmPassword: ['', [Validators.required, matchPasswordValidator('password')]],
   });
@@ -187,6 +197,7 @@ export class RegisterComponent {
       nomeCompleto: 'Nome completo',
       username: 'Username',
       email: 'Email',
+      classroom: 'Classe',
       password: 'Password',
       confirmPassword: 'Conferma password',
     };
@@ -218,10 +229,10 @@ export class RegisterComponent {
     this.isLoading.set(true);
     this.errorMessage.set('');
 
-    const { nomeCompleto, username, email, password } = this.registerForm.value;
+    const { nomeCompleto, username, email, classroom, password } = this.registerForm.value;
 
     this.authService
-      .register({ nomeCompleto, username, email, password })
+      .register({ nomeCompleto, username, email, classroom, password })
       .subscribe({
         next: () => {
           this.isLoading.set(false);

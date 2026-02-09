@@ -280,6 +280,7 @@ export class ChatComponent implements OnInit, OnDestroy {
           nomeCompleto: user.nomeCompleto,
           profilePictureUrl: user.profilePictureUrl,
           isOnline: user.isOnline,
+          classroom: user.classroom ?? null,
         });
       },
       error: () => {

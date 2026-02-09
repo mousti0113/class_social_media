@@ -21,4 +21,5 @@ public class UserResponseDTO {
     private Boolean isActive;
     private LocalDateTime lastSeen;
     private Boolean isOnline;
+    private String classroom;
 }

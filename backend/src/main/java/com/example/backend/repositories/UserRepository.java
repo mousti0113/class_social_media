@@ -123,6 +123,41 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> findAllActiveUsers(Pageable pageable);
 
     /**
+     * Trova tutti gli utenti attivi della stessa classe con paginazione.
+     * Filtra per classroom per garantire isolamento tra classi.
+     */
+    @Query("SELECT u FROM User u WHERE u.isActive = true AND u.classroom = :classroom ORDER BY u.username ASC")
+    Page<User> findAllActiveUsersByClassroom(@Param("classroom") String classroom, Pageable pageable);
+
+    /**
+     * Ricerca utenti per username o nome completo, filtrata per classe.
+     * Garantisce che gli studenti vedano solo i compagni di classe nei risultati.
+     */
+    @Query("""
+        SELECT u FROM User u
+        WHERE u.isActive = true
+        AND u.classroom = :classroom
+        AND (
+            LOWER(u.username) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+            OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+        )
+        ORDER BY u.username ASC
+        """)
+    Page<User> searchUsersByClassroom(@Param("searchTerm") String searchTerm, @Param("classroom") String classroom, Pageable pageable);
+
+    /**
+     * Trova utenti online della stessa classe.
+     */
+    @Query("""
+        SELECT DISTINCT u FROM User u
+        JOIN u.sessions s
+        WHERE s.isOnline = true
+        AND s.lastActivity > :threshold
+        AND u.classroom = :classroom
+        """)
+    List<User> findOnlineUsersByClassroom(@Param("threshold") LocalDateTime threshold, @Param("classroom") String classroom);
+
+    /**
      * Conta i post creati da un utente specifico.
      * Utile per mostrare statistiche nel profilo.
      */

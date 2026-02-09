@@ -11,7 +11,8 @@ import java.util.Set;
 @Entity
 @Table(name = "users",indexes = {
         @Index(name = "idx_username", columnList = "username"),
-        @Index(name = "idx_email", columnList = "email")
+        @Index(name = "idx_email", columnList = "email"),
+        @Index(name = "idx_classroom", columnList = "classroom")
     })
 @Data
 @NoArgsConstructor
@@ -49,7 +50,10 @@ public class User extends BaseEntity {
     
     @Column(name = "last_seen")
     private LocalDateTime lastSeen;
-    
+
+    @Column(name = "classroom", length = 10)
+    private String classroom;
+
     // Relazioni
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default

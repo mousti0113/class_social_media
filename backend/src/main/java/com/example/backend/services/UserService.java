@@ -179,24 +179,38 @@ public class UserService {
 
     /**
      * Cerca utenti per username o nome completo.
-     *
+     * Filtra solo i compagni della stessa classe dell'utente corrente.
      *
      * @param searchTerm termine di ricerca (username o nome)
+     * @param currentUserId ID dell'utente che effettua la ricerca
      * @param pageable   parametri di paginazione
-     * @return pagina di utenti trovati
+     * @return pagina di utenti trovati nella stessa classe
      * @throws InvalidInputException se il termine di ricerca è vuoto
      */
     @Transactional(readOnly = true)
-    public Page<UserSummaryDTO> cercaUtenti(String searchTerm, Pageable pageable) {
-        log.debug("Ricerca utenti - Termine: {}", searchTerm);
+    public Page<UserSummaryDTO> cercaUtenti(String searchTerm, Long currentUserId, Pageable pageable) {
+        log.debug("Ricerca utenti - Termine: {}, Utente: {}", searchTerm, currentUserId);
 
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
             throw new InvalidInputException("Il termine di ricerca non può essere vuoto");
         }
 
-        Page<User> users = userRepository.searchUsers(searchTerm.trim(), pageable);
+        // Recupera la classe dell'utente corrente
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException(ENTITY_USER, FIELD_ID, currentUserId));
 
-        log.debug("Trovati {} utenti con termine '{}'", users.getTotalElements(), searchTerm);
+        String classroom = currentUser.getClassroom();
+
+        Page<User> users;
+        if (classroom != null && !classroom.isEmpty()) {
+            // Filtra per classe
+            users = userRepository.searchUsersByClassroom(searchTerm.trim(), classroom, pageable);
+        } else {
+            // Fallback: se l'utente non ha classe, cerca tutti (per retrocompatibilità)
+            users = userRepository.searchUsers(searchTerm.trim(), pageable);
+        }
+
+        log.debug("Trovati {} utenti con termine '{}' nella classe '{}'", users.getTotalElements(), searchTerm, classroom);
 
         // Ottimizzazione: carica tutti gli utenti online in una singola query
         Set<Long> onlineUserIds = userMapper.getOnlineUserIds();
@@ -204,17 +218,31 @@ public class UserService {
     }
 
     /**
-     * Ottiene tutti gli utenti attivi della piattaforma.
-     * Utile per visualizzare la lista completa della classe.
+     * Ottiene tutti gli utenti attivi della stessa classe dell'utente corrente.
+     * Filtra per classroom per garantire isolamento tra classi.
      *
+     * @param currentUserId ID dell'utente che effettua la richiesta
      * @param pageable parametri di paginazione
-     * @return pagina di utenti attivi
+     * @return pagina di utenti attivi della stessa classe
      */
     @Transactional(readOnly = true)
-    public Page<UserSummaryDTO> ottieniTuttiUtenti(Pageable pageable) {
-        log.debug("Caricamento tutti gli utenti attivi");
+    public Page<UserSummaryDTO> ottieniTuttiUtenti(Long currentUserId, Pageable pageable) {
+        log.debug("Caricamento utenti della stessa classe - Utente ID: {}", currentUserId);
 
-        Page<User> users = userRepository.findAllActiveUsers(pageable);
+        // Recupera la classe dell'utente corrente
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException(ENTITY_USER, FIELD_ID, currentUserId));
+
+        String classroom = currentUser.getClassroom();
+
+        Page<User> users;
+        if (classroom != null && !classroom.isEmpty()) {
+            // Filtra per classe
+            users = userRepository.findAllActiveUsersByClassroom(classroom, pageable);
+        } else {
+            // Fallback: se l'utente non ha classe, mostra tutti (per retrocompatibilità)
+            users = userRepository.findAllActiveUsers(pageable);
+        }
 
         // Ottimizzazione: carica tutti gli utenti online in una singola query
         Set<Long> onlineUserIds = userMapper.getOnlineUserIds();

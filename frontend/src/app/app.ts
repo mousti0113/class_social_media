@@ -19,9 +19,10 @@ export class App implements OnInit {
   // Inizializza l'AuthService per ripristinare la sessione da localStorage
   private readonly authService = inject(AuthService);
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     // Ripristina la sessione utente dai token salvati in localStorage
-    this.authService.initAuth();
+    // Attende il completamento per gestire il refresh automatico del token
+    await this.authService.initAuth();
   }
 
 }

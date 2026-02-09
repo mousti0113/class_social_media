@@ -87,6 +87,32 @@
           }
         </div>
 
+        <!-- Classe -->
+        <div>
+          <label class="block text-sm font-medium text-text-light dark:text-text-dark mb-1.5">
+            Classe <span class="text-error-500">*</span>
+          </label>
+          <select
+            formControlName="classroom"
+            class="w-full px-4 py-3 rounded-lg border border-border-light dark:border-border-dark
+                   bg-surface-light dark:bg-surface-dark
+                   text-text-light dark:text-text-dark
+                   focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+                   transition-colors duration-200"
+            [class.border-error-500]="getFieldError('classroom')"
+          >
+            <option value="" disabled>Seleziona la tua classe</option>
+            @for (classroom of availableClassrooms; track classroom) {
+              <option [value]="classroom">{{ classroom }}</option>
+            }
+          </select>
+          @if (getFieldError('classroom')) {
+            <span class="block text-xs text-error-500 mt-1 ml-1">
+              {{ getFieldError('classroom') }}
+            </span>
+          }
+        </div>
+
         <!-- Password -->
         <app-input-component
           formControlName="password"

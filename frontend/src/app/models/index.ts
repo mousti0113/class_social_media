@@ -35,6 +35,7 @@ export interface UserSummaryDTO {
   nomeCompleto: string;
   profilePictureUrl: string | null;
   isOnline: boolean;
+  classroom: string | null;
 }
 
 /**
@@ -51,6 +52,7 @@ export interface UserResponseDTO {
   isActive: boolean;
   lastSeen: string; // ISO 8601 format
   isOnline: boolean;
+  classroom: string | null;
 }
 
 /**
@@ -203,6 +205,7 @@ export interface RegistrazioneRequestDTO {
   email: string; // Email valida
   password: string; // Min 6 caratteri
   nomeCompleto: string; // Max 100 caratteri
+  classroom: string; // Classe dello studente (es. 5IA)
 }
 
 /**

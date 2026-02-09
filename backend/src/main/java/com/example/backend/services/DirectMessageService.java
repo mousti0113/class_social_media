@@ -42,7 +42,8 @@ public class DirectMessageService {
     private static final String FIELD_ID = "id";
 
     /**
-     * Invia un messaggio diretto a un altro utente
+     * Invia un messaggio diretto a un altro utente.
+     * I messaggi possono essere inviati solo tra compagni della stessa classe.
      */
     @Transactional
     public MessageResponseDTO inviaMessaggio(Long senderId, InviaMessaggioRequestDTO request) {
@@ -65,6 +66,18 @@ public class DirectMessageService {
         User receiver = userRepository.findById(request.getDestinatarioId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         ENTITY_USER, FIELD_ID, request.getDestinatarioId()));
+
+        // Verifica che mittente e destinatario siano della stessa classe
+        String senderClassroom = sender.getClassroom();
+        String receiverClassroom = receiver.getClassroom();
+
+        if (senderClassroom != null && !senderClassroom.isEmpty()
+                && receiverClassroom != null && !receiverClassroom.isEmpty()
+                && !senderClassroom.equals(receiverClassroom)) {
+            log.warn("Tentativo di inviare messaggio a utente di altra classe - Mittente: {} ({}), Destinatario: {} ({})",
+                    senderId, senderClassroom, request.getDestinatarioId(), receiverClassroom);
+            throw new InvalidInputException("Puoi inviare messaggi solo ai compagni della tua classe");
+        }
 
         // Crea il messaggio
         DirectMessage message = DirectMessage.builder()

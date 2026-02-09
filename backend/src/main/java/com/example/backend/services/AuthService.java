@@ -78,6 +78,7 @@ public class AuthService {
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getNomeCompleto())
+                .classroom(request.getClassroom())
                 .isAdmin(false)
                 .isActive(false) // L'utente deve verificare l'email
                 .build();

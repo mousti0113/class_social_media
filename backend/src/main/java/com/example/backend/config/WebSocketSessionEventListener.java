@@ -244,7 +244,8 @@ public class WebSocketSessionEventListener {
 
     /**
      * Broadcast dell'evento di cambio stato online di un utente.
-     * Invia a tutti i client connessi tramite il topic /topic/user-presence
+     * Invia solo ai compagni della stessa classe tramite il topic /topic/classroom/{classroom}/presence
+     * e anche al topic globale per retrocompatibilità.
      *
      * @param username L'username dell'utente
      * @param isOnline true se online, false se offline
@@ -265,9 +266,17 @@ public class WebSocketSessionEventListener {
                 presenceEvent.put("nomeCompleto", user.getFullName());
                 presenceEvent.put("profilePictureUrl", user.getProfilePictureUrl());
                 presenceEvent.put("isOnline", isOnline);
+                presenceEvent.put("classroom", user.getClassroom());
                 presenceEvent.put("timestamp", System.currentTimeMillis());
 
-                // Broadcast a tutti i client
+                // Broadcast al topic specifico della classe (se l'utente ha una classe)
+                String classroom = user.getClassroom();
+                if (classroom != null && !classroom.isEmpty()) {
+                    messagingTemplate.convertAndSend("/topic/classroom/" + classroom + "/presence", presenceEvent);
+                    log.debug("Broadcast user {} status: {} to classroom {}", username, isOnline ? "online" : "offline", classroom);
+                }
+
+                // Broadcast anche al topic globale per retrocompatibilità
                 messagingTemplate.convertAndSend("/topic/user-presence", presenceEvent);
 
                 log.debug("Broadcast user {} status: {}", username, isOnline ? "online" : "offline");

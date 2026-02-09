@@ -28,6 +28,22 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             """)
     Page<Post> findVisiblePostsForUser(@Param("userId") Long userId, Pageable pageable);
 
+    /**
+     * Post visibili per un utente, filtrati per classe.
+     * Mostra solo post di utenti della stessa classe.
+     */
+    @Query("""
+            SELECT p FROM Post p
+            WHERE p.isDeletedByAuthor = false
+            AND p.user.classroom = :classroom
+            AND NOT EXISTS (
+                SELECT hp FROM HiddenPost hp
+                WHERE hp.post.id = p.id AND hp.user.id = :userId
+            )
+            ORDER BY p.createdAt DESC
+            """)
+    Page<Post> findVisiblePostsForUserByClassroom(@Param("userId") Long userId, @Param("classroom") String classroom, Pageable pageable);
+
     // Post di un utente specifico
     Page<Post> findByUserIdAndIsDeletedByAuthorFalseOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
@@ -74,6 +90,24 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             ORDER BY p.createdAt DESC
             """)
     Page<Post> searchPosts(@Param("searchTerm") String searchTerm, Pageable pageable);
+
+    /**
+     * Ricerca full-text nei post, filtrata per classe.
+     * Cerca sia nel contenuto del post che nello username/nome dell'autore,
+     * ma solo tra i post degli utenti della stessa classe.
+     */
+    @Query("""
+            SELECT p FROM Post p
+            WHERE p.isDeletedByAuthor = false
+            AND p.user.classroom = :classroom
+            AND (
+                LOWER(p.content) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+                OR LOWER(p.user.username) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+                OR LOWER(p.user.fullName) LIKE LOWER(CONCAT('%', :searchTerm, '%'))
+            )
+            ORDER BY p.createdAt DESC
+            """)
+    Page<Post> searchPostsByClassroom(@Param("searchTerm") String searchTerm, @Param("classroom") String classroom, Pageable pageable);
 
     /**
      * Conta il numero totale di post pubblicati da un utente.

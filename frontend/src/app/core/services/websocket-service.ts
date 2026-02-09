@@ -509,6 +509,9 @@ export interface UserPresenceEvent {
   /** Stato online */
   isOnline: boolean;
 
+  /** Classe dell'utente */
+  classroom: string | null;
+
   /** Timestamp dell'evento */
   timestamp: number;
 }

@@ -281,22 +281,35 @@ public class PostService {
      * Restituisce tutti i post visibili all'utente, escludendo:
      * - Post cancellati (isDeletedByAuthor = true)
      * - Post nascosti dall'utente
+     * - Post di utenti di altre classi
      * <p>
      * I risultati sono paginati per evitare di caricare troppi post in una volta.
      * L'ordinamento è per data di creazione decrescente: i post più recenti appaiono prima.
      *
      * @param userId   L'ID dell'utente che sta visualizzando il feed
      * @param pageable Parametri di paginazione (numero pagina, dimensione, ordinamento)
-     * @return Page di PostResponseDTO con i post del feed
+     * @return Page di PostResponseDTO con i post del feed della propria classe
      */
     @Transactional(readOnly = true)
     public Page<PostResponseDTO> ottieniFeed(Long userId, Pageable pageable) {
         log.debug("Caricamento feed per utente ID: {} - Pagina: {}", userId, pageable.getPageNumber());
 
-        // La query findVisiblePostsForUser filtra automaticamente post cancellati e nascosti
-        Page<Post> posts = postRepository.findVisiblePostsForUser(userId, pageable);
+        // Recupera la classe dell'utente corrente
+        User currentUser = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Utente", "id", userId));
 
-        log.debug("Feed caricato: {} post trovati per utente ID: {}", posts.getTotalElements(), userId);
+        String classroom = currentUser.getClassroom();
+
+        Page<Post> posts;
+        if (classroom != null && !classroom.isEmpty()) {
+            // Filtra per classe
+            posts = postRepository.findVisiblePostsForUserByClassroom(userId, classroom, pageable);
+            log.debug("Feed caricato: {} post trovati per utente ID: {} nella classe: {}", posts.getTotalElements(), userId, classroom);
+        } else {
+            // Fallback: se l'utente non ha classe, mostra tutti (per retrocompatibilità)
+            posts = postRepository.findVisiblePostsForUser(userId, pageable);
+            log.debug("Feed caricato (senza filtro classe): {} post trovati per utente ID: {}", posts.getTotalElements(), userId);
+        }
 
         // Ottimizzazione: carica tutti gli utenti online in una singola query
         Set<Long> onlineUserIds = postMapper.getOnlineUserIds();
@@ -308,13 +321,13 @@ public class PostService {
     /**
      * Cerca post per parola chiave.
      * <p>
-     * <p>
-     * La ricerca è case-insensitive
+     * La ricerca è case-insensitive e filtrata per classe.
+     * Mostra solo post di utenti della stessa classe.
      *
      * @param searchTerm La parola o frase da cercare
      * @param userId     L'ID dell'utente che sta cercando
      * @param pageable   Parametri di paginazione
-     * @return Page di PostResponseDTO con i risultati della ricerca
+     * @return Page di PostResponseDTO con i risultati della ricerca della propria classe
      */
     @Transactional(readOnly = true)
     public Page<PostResponseDTO> cercaPost(String searchTerm, Long userId, Pageable pageable) {
@@ -326,10 +339,22 @@ public class PostService {
             throw new InvalidInputException("Il termine di ricerca non può essere vuoto");
         }
 
-        // Esegue la ricerca
-        Page<Post> posts = postRepository.searchPosts(searchTerm.trim(), pageable);
+        // Recupera la classe dell'utente corrente
+        User currentUser = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Utente", "id", userId));
 
-        log.debug("Ricerca completata: {} risultati per termine '{}'", posts.getTotalElements(), searchTerm);
+        String classroom = currentUser.getClassroom();
+
+        Page<Post> posts;
+        if (classroom != null && !classroom.isEmpty()) {
+            // Filtra per classe
+            posts = postRepository.searchPostsByClassroom(searchTerm.trim(), classroom, pageable);
+            log.debug("Ricerca completata: {} risultati per termine '{}' nella classe '{}'", posts.getTotalElements(), searchTerm, classroom);
+        } else {
+            // Fallback: se l'utente non ha classe, cerca tutti (per retrocompatibilità)
+            posts = postRepository.searchPosts(searchTerm.trim(), pageable);
+            log.debug("Ricerca completata (senza filtro classe): {} risultati per termine '{}'", posts.getTotalElements(), searchTerm);
+        }
 
         return posts.map(post -> postMapper.toPostResponseDTO(post, userId));
     }

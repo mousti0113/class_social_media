@@ -141,46 +141,52 @@ public class UserController {
      * - Username
      * - Nome completo
      * <p>
+     * Filtra solo utenti della stessa classe dell'utente corrente.
      * Supporta paginazione (default 20 risultati per pagina).
      *
      * @param searchTerm termine di ricerca
+     * @param user utente autenticato
      * @param pageable parametri paginazione (size, page, sort)
-     * @return pagina di utenti trovati
+     * @return pagina di utenti trovati nella stessa classe
      */
     @GetMapping("/search")
     public ResponseEntity<Page<UserSummaryDTO>> cercaUtenti(
             @RequestParam("q") String searchTerm,
+            @CurrentUser User user,
             @PageableDefault(size = 20, sort = "username", direction = Sort.Direction.ASC)
             Pageable pageable) {
 
-        log.debug("GET /api/users/search?q={}", searchTerm);
+        log.debug("GET /api/users/search?q={} - Classe: {}", searchTerm, user.getClassroom());
 
-        Page<UserSummaryDTO> users = userService.cercaUtenti(searchTerm, pageable);
+        Page<UserSummaryDTO> users = userService.cercaUtenti(searchTerm, user.getId(), pageable);
 
         return ResponseEntity.ok(users);
     }
 
     /**
-     * Ottiene tutti gli utenti attivi della piattaforma.
+     * Ottiene tutti gli utenti attivi della stessa classe.
      * <p>
      * Endpoint: GET /api/users
      * Autenticazione: richiesta
      * <p>
-     * Utile per visualizzare la lista completa della classe.
+     * Filtra per classroom per garantire isolamento tra classi.
+     * Utile per visualizzare la lista completa dei compagni di classe.
      * Esclude account disattivati.
      * Supporta paginazione (default 20 per pagina, ordinati per username).
      *
+     * @param user utente autenticato
      * @param pageable parametri paginazione
-     * @return pagina di utenti attivi
+     * @return pagina di utenti attivi della stessa classe
      */
     @GetMapping
     public ResponseEntity<Page<UserSummaryDTO>> ottieniTuttiUtenti(
+            @CurrentUser User user,
             @PageableDefault(size = 20, sort = "username", direction = Sort.Direction.ASC)
             Pageable pageable) {
 
-        log.debug("GET /api/users");
+        log.debug("GET /api/users - Classe: {}", user.getClassroom());
 
-        Page<UserSummaryDTO> users = userService.ottieniTuttiUtenti(pageable);
+        Page<UserSummaryDTO> users = userService.ottieniTuttiUtenti(user.getId(), pageable);
 
         return ResponseEntity.ok(users);
     }

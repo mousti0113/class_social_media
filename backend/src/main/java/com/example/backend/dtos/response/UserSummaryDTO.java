@@ -15,4 +15,5 @@ public class UserSummaryDTO {
     private String nomeCompleto;
     private String profilePictureUrl;
     private Boolean isOnline;
+    private String classroom;
 }

@@ -33,6 +33,7 @@ public class UserMapper {
                 .isActive(user.getIsActive())
                 .lastSeen(user.getLastSeen())
                 .isOnline(isUserOnline(user))
+                .classroom(user.getClassroom())
                 .build();
     }
 
@@ -54,6 +55,7 @@ public class UserMapper {
                 .isActive(user.getIsActive())
                 .lastSeen(user.getLastSeen())
                 .isOnline(onlineUserIds.contains(user.getId()))
+                .classroom(user.getClassroom())
                 .build();
     }
 
@@ -66,6 +68,7 @@ public class UserMapper {
                 .nomeCompleto(user.getFullName())
                 .profilePictureUrl(user.getProfilePictureUrl())
                 .isOnline(isUserOnline(user))
+                .classroom(user.getClassroom())
                 .build();
     }
 
@@ -82,6 +85,7 @@ public class UserMapper {
                 .nomeCompleto(user.getFullName())
                 .profilePictureUrl(user.getProfilePictureUrl())
                 .isOnline(onlineUserIds.contains(user.getId()))
+                .classroom(user.getClassroom())
                 .build();
     }
 

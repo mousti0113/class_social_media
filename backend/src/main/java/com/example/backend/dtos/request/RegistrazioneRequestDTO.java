@@ -23,4 +23,8 @@ public class RegistrazioneRequestDTO {
     @NotBlank(message = "Nome completo è obbligatorio")
     @Size(max = 100)
     private String nomeCompleto;
+
+    @NotBlank(message = "Classe è obbligatoria")
+    @Size(max = 10, message = "Classe deve essere massimo 10 caratteri")
+    private String classroom;
 }

@@ -15,32 +15,26 @@ export class OnlineUsersStore {
   private readonly websocketService = inject(WebsocketService);
   private readonly logger = inject(LoggerService);
 
-  // Intervallo di aggiornamento automatico (aumentato a 5 minuti perché usiamo WebSocket)
+  // Intervallo di aggiornamento automatico 
   private readonly REFRESH_INTERVAL = 300000; // 5 minuti
 
   // Subscription per il polling e WebSocket
   private pollingSubscription: Subscription | null = null;
   private websocketSubscription: Subscription | null = null;
 
-  // ============================================================================
   // SIGNALS PRIVATI
-  // ============================================================================
 
   private readonly _onlineUsers = signal<UserSummaryDTO[]>([]);
   private readonly _loading = signal<boolean>(false);
   private readonly _lastUpdate = signal<Date | null>(null);
 
-  // ============================================================================
   // SIGNALS PUBBLICI READONLY
-  // ============================================================================
 
   readonly onlineUsers = this._onlineUsers.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly lastUpdate = this._lastUpdate.asReadonly();
 
-  // ============================================================================
   // COMPUTED SIGNALS
-  // ============================================================================
 
   /** Numero di utenti online */
   readonly onlineCount = computed(() => this._onlineUsers().length);
@@ -58,9 +52,7 @@ export class OnlineUsersStore {
     [...this._onlineUsers()].sort((a, b) => a.nomeCompleto.localeCompare(b.nomeCompleto))
   );
 
-  // ============================================================================
   // COSTRUTTORE - Setup Auto-Refresh
-  // ============================================================================
 
   constructor() {
     // Avvia il polling solo se l'utente è autenticato
@@ -73,9 +65,7 @@ export class OnlineUsersStore {
     this.subscribeToWebSocketConnection();
   }
 
-  // ============================================================================
   // METODI PUBBLICI - Gestione WebSocket
-  // ============================================================================
 
   /**
    * Sottoscrivi agli eventi WebSocket per aggiornamenti real-time dello stato online
@@ -90,6 +80,7 @@ export class OnlineUsersStore {
           nomeCompleto: event.nomeCompleto,
           profilePictureUrl: event.profilePictureUrl,
           isOnline: true,
+          classroom: event.classroom ?? null,
         };
         this.markUserOnline(userSummary);
       } else if (event.type === 'user_offline') {
@@ -114,9 +105,7 @@ export class OnlineUsersStore {
     });
   }
 
-  // ============================================================================
   // METODI PUBBLICI - Gestione Polling
-  // ============================================================================
 
   /**
    * Avvia il polling automatico degli utenti online
@@ -155,9 +144,7 @@ export class OnlineUsersStore {
     this._lastUpdate.set(null);
   }
 
-  // ============================================================================
   // METODI PUBBLICI - Caricamento Utenti Online
-  // ============================================================================
 
   /**
    * Carica tutti gli utenti online
@@ -206,9 +193,7 @@ export class OnlineUsersStore {
     }
   }
 
-  // ============================================================================
   // METODI PUBBLICI - Query Utenti Online
-  // ============================================================================
 
   /**
    * Verifica se un utente specifico è online
@@ -266,9 +251,7 @@ export class OnlineUsersStore {
     return this._onlineUsers().filter((user) => !excludeSet.has(user.id));
   }
 
-  // ============================================================================
   // METODI PUBBLICI - Aggiornamento Stato
-  // ============================================================================
 
   /**
    * Marca un utente come online
@@ -318,12 +301,10 @@ export class OnlineUsersStore {
     );
   }
 
-  // ============================================================================
   // METODI PUBBLICI - Gestione Store
-  // ============================================================================
 
   /**
-   * Pulisce lo store (dopo logout)
+   * Pulisce lo store
    */
   clear(): void {
     this._onlineUsers.set([]);
